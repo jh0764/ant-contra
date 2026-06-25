@@ -425,7 +425,7 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
     except Exception:
         results["volume"] = {"status": "yellow", "label": "거래량 — 계산 불가", "desc": "데이터 부족", "score": 0}
  
-    # ── 5. 외국인 순매수 방향 (네이버 금융 크롤링) ────────────────────
+    # ── 5. 외국인 순매수 방향 (네이버 금융 크롤링) ────────────────────-
     try:
         url = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -493,7 +493,7 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
         short_url = f"https://finance.naver.com/item/main.naver?code={ticker_code}"
         resp_sh = requests.get(short_url, headers=headers, timeout=5)
         soup_sh = BeautifulSoup(resp_sh.content, "html.parser")
-
+    
         # 공매도 잔고비율 파싱 (테이블 구조: 날짜 | 공매도잔고 | 잔고비율)
         short_rows = soup_sh.select("table.type2 tr")
         short_data = []

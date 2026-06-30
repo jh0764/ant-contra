@@ -296,7 +296,19 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
     계산하여 각 지표의 상태와 점수를 반환합니다.
     """
     results = {}
- 
+    try:
+        matched = KRX_LISTING[KRX_LISTING["Code"] == ticker_code]
+        # yf suffix 기반 판별이 가장 정확하나 여기선 fdr 데이터 활용
+        # fdr StockListing에 Market 컬럼 있으면 활용, 없으면 코드 범위로 간이 판별
+        if "Market" in KRX_LISTING.columns and not matched.empty:
+            is_kosdaq = str(matched["Market"].iloc[0]).upper() in ("KOSDAQ", "코스닥")
+        else:
+            code_int = int(ticker_code)
+            # KOSDAQ 종목코드는 통상 0으로 시작하는 6자리 중 특정 범위
+            # 완벽하진 않지만 yf .KQ suffix 시도 결과로 판별하는 게 더 정확
+            is_kosdaq = False  # 기본값, 아래 yf suffix 판별로 보완
+    except Exception:
+        is_kosdaq = False
     # ── 1. RSI (14일) ─────────────────────────────────────────────
     try:
         delta = close_series.diff()
@@ -425,110 +437,200 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
     except Exception:
         results["volume"] = {"status": "yellow", "label": "거래량 — 계산 불가", "desc": "데이터 부족", "score": 0}
  
-    # ── 5. 외국인 순매수 방향 (네이버 금융 크롤링) ────────────────────-
+    # ── 5. 외국인 순매수 (pykrx) ──────────────────────────────────────
     try:
-        url = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        resp = requests.get(url, headers=headers, timeout=5)
-        soup_f = BeautifulSoup(resp.content, "html.parser")
-        rows_f = soup_f.select("table.type2 tr")
- 
-        foreign_data = []
-        for row in rows_f[:5]:
-            tds = row.select("td")
-            if len(tds) >= 5:
-                try:
-                    net_val_text = tds[4].get_text().strip().replace(",", "").replace("+", "")
-                    net_val = int(net_val_text)
-                    foreign_data.append(net_val)
-                except Exception:
-                    continue
- 
-        if len(foreign_data) >= 2:
-            recent_sum = sum(foreign_data[:3])
-            consecutive_sell = sum(1 for v in foreign_data[:3] if v < 0)
-            consecutive_buy = sum(1 for v in foreign_data[:3] if v > 0)
- 
-            if consecutive_sell >= 3:
-                fg_status = "green"
-                fg_label = f"외국인 3일 연속 순매도 ({recent_sum:+,}억)"
-                fg_desc = "기관 이탈 공포 극대화. 역발상 관점 매수 신호"
-                fg_score = 10
-            elif consecutive_sell == 2:
-                fg_status = "yellow"
-                fg_label = f"외국인 2일 연속 순매도 ({recent_sum:+,}억)"
-                fg_desc = "매도 압력 지속 중. 추이 모니터링 필요"
-                fg_score = 4
-            elif consecutive_buy >= 2:
-                fg_status = "red"
-                fg_label = f"외국인 순매수 중 ({recent_sum:+,}억)"
-                fg_desc = "기관 유입 중. 역발상 매수 타이밍 아님"
-                fg_score = -3
+        from pykrx import stock as krx_stock
+        today_str = pd.Timestamp.now().strftime("%Y%m%d")
+        start_str = (pd.Timestamp.now() - pd.Timedelta(days=10)).strftime("%Y%m%d")
+
+        trade_df = krx_stock.get_market_trading_value_by_date(start_str, today_str, ticker_code)
+        # 컬럼: 기관합계, 외국인합계, 개인, ...
+        if trade_df is not None and len(trade_df) >= 2:
+            foreign_col = "외국인합계" if "외국인합계" in trade_df.columns else trade_df.columns[1]
+            recent = trade_df[foreign_col].iloc[-3:].tolist()
+            recent_sum = int(sum(recent) / 1e8)  # 억 단위 변환
+            consec_sell = sum(1 for v in recent if v < 0)
+            consec_buy  = sum(1 for v in recent if v > 0)
+
+            if consec_sell >= 3:
+                fg_status, fg_label = "green", f"외국인 3일 연속 순매도 ({recent_sum:+,}억)"
+                fg_desc, fg_score   = "기관 이탈 공포 극대화. 역발상 매수 신호", 10
+            elif consec_sell == 2:
+                fg_status, fg_label = "yellow", f"외국인 2일 연속 순매도 ({recent_sum:+,}억)"
+                fg_desc, fg_score   = "매도 압력 지속. 추이 모니터링", 4
+            elif consec_buy >= 2:
+                fg_status, fg_label = "red", f"외국인 순매수 중 ({recent_sum:+,}억)"
+                fg_desc, fg_score   = "기관 유입 중. 역발상 타이밍 아님", -3
             else:
-                fg_status = "yellow"
-                fg_label = "외국인 혼조세"
-                fg_desc = "뚜렷한 방향성 없음. 대기 구간"
-                fg_score = 0
+                fg_status, fg_label = "yellow", "외국인 혼조세"
+                fg_desc, fg_score   = "뚜렷한 방향성 없음", 0
         else:
-            raise ValueError("외국인 데이터 부족")
- 
+            raise ValueError("데이터 부족")
+
         results["foreign"] = {"status": fg_status, "label": fg_label, "desc": fg_desc, "score": fg_score}
-    except Exception:
-        results["foreign"] = {"status": "yellow", "label": "외국인 동향 — 수집 불가", "desc": "네이버 응답 없음. 잠시 후 재시도", "score": 0}
- 
-    # ── 객관 지표 총점 계산 (최대 70점 → 전체 비명 지수의 70% 담당)
-    raw_obj_score = sum(v["score"] for v in results.values())
-    # 가격 기반(RSI+볼린저+52주) 최대 40점, 수급 기반(거래량+외국인) 최대 30점
-    # 실제 합산 후 0~70 범위로 클리핑
-    objective_score = max(0, min(80, raw_obj_score + 40))  # 중립값 35 기준으로 이동
-    
-    # ── 9. 공매도 잔고 증가 감지 (네이버 금융 크롤링) ─────────────────
+    except Exception as e:
+        results["foreign"] = {"status": "yellow", "label": f"외국인 — 오류: {str(e)[:40]}", "desc": "잠시 후 재시도", "score": 0}
+
+# ── 10. 공포-거래량 괴리 지수 ─────────────────────────────────
     try:
-        ss_url = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp_ss = requests.get(ss_url, headers=headers, timeout=5)
-        soup_ss = BeautifulSoup(resp_ss.content, "html.parser")
+        if len(close_series) >= 6 and len(volume_series) >= 6:
+            price_chg_5d = (float(close_series.iloc[-1]) - float(close_series.iloc[-6])) / float(close_series.iloc[-6])
+            vol_chg_5d   = (float(volume_series.iloc[-1]) - float(volume_series.iloc[-6])) / float(volume_series.iloc[-6])
 
-        # 공매도 잔고 테이블 (네이버 금융 → 종목분석 → 공매도)
-        short_url = f"https://finance.naver.com/item/main.naver?code={ticker_code}"
-        resp_sh = requests.get(short_url, headers=headers, timeout=5)
-        soup_sh = BeautifulSoup(resp_sh.content, "html.parser")
-    
-        # 공매도 잔고비율 파싱 (테이블 구조: 날짜 | 공매도잔고 | 잔고비율)
-        short_rows = soup_sh.select("table.type2 tr")
-        short_data = []
-        for row in short_rows[:5]:
-            tds = row.select("td")
-            if len(tds) >= 3:
-                try:
-                    ratio_text = tds[2].get_text().strip().replace("%", "").replace(",", "")
-                    ratio_val = float(ratio_text)
-                    short_data.append(ratio_val)
-                except Exception:
-                    continue
-
-        if len(short_data) >= 2:
-            delta_short = short_data[0] - short_data[1]
-            if short_data[0] >= 5.0 and delta_short > 0.3:
-                sh_status, sh_label = "green", f"공매도 잔고 {short_data[0]:.1f}% (↑{delta_short:+.1f}%p)"
-                sh_desc, sh_score   = "공매도 잔고 고수준 증가. 숏커버링 반등 트리거 가능", 10
-            elif delta_short > 0.5:
-                sh_status, sh_label = "green", f"공매도 잔고 급증 (Δ{delta_short:+.1f}%p)"
-                sh_desc, sh_score   = "잔고 급증 = 향후 숏스퀴즈 가능성", 7
-            elif delta_short < -0.3:
-                sh_status, sh_label = "red",   f"공매도 잔고 감소 (Δ{delta_short:+.1f}%p)"
-                sh_desc, sh_score   = "숏커버 마무리 단계. 역발상 모멘텀 약화", -3
+            if price_chg_5d < -0.03 and vol_chg_5d > 0.5:
+                pvd_status, pvd_label = "green", f"패닉셀 감지 (가격↓{price_chg_5d*100:.1f}% / 거래량↑{vol_chg_5d*100:.0f}%)"
+                pvd_desc, pvd_score   = "하락+거래량 폭발 = 투매 클라이맥스. 바닥 신호 최강", 15
+            elif price_chg_5d < -0.03 and vol_chg_5d < -0.2:
+                pvd_status, pvd_label = "yellow", f"무관심 하락 (가격↓{price_chg_5d*100:.1f}% / 거래량↓)"
+                pvd_desc, pvd_score   = "하락+거래량 감소 = 아직 바닥 탐색 중. 대기 권고", 3
+            elif price_chg_5d > 0.05 and vol_chg_5d > 0.5:
+                pvd_status, pvd_label = "red", f"추격 위험 (가격↑{price_chg_5d*100:.1f}% / 거래량↑{vol_chg_5d*100:.0f}%)"
+                pvd_desc, pvd_score   = "상승+거래량 폭발 = FOMO 추격 위험 구간", -5
             else:
-                sh_status, sh_label = "yellow", f"공매도 잔고 {short_data[0]:.1f}% — 보합"
+                pvd_status, pvd_label = "yellow", f"괴리 미포착 (가격{price_chg_5d*100:+.1f}%)"
+                pvd_desc, pvd_score   = "뚜렷한 패닉셀/추격 신호 없음", 0
+
+            results["pvd"] = {"status": pvd_status, "label": pvd_label, "desc": pvd_desc, "score": pvd_score}
+        else:
+            raise ValueError("데이터 부족")
+    except Exception:
+        results["pvd"] = {"status": "yellow", "label": "괴리 지수 — 계산 불가", "desc": "데이터 부족", "score": 0}
+
+# ── 11. 뉴스 공백 지수 ────────────────────────────────────────
+    try:
+        import urllib.parse
+        news_url = f"https://finance.naver.com/item/news_news.naver?code={ticker_code}&page=1"
+        resp_n = requests.get(news_url, headers={
+            "User-Agent": "Mozilla/5.0",
+            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+        }, timeout=5)
+        soup_n = BeautifulSoup(resp_n.content, "html.parser")
+        # 당일 기사 수 카운트
+        today_str_display = pd.Timestamp.now().strftime("%Y.%m.%d")
+        all_dates = [td.get_text().strip() for td in soup_n.select("td.date")]
+        today_count = sum(1 for d in all_dates if today_str_display in d)
+        total_count_news = len(all_dates)
+
+        # 당일 기사 비율
+        today_ratio = today_count / total_count_news if total_count_news > 0 else 0
+
+        if today_count == 0:
+            nv_status, nv_label = "green", "뉴스 완전 공백 — 관심 소멸"
+            nv_desc, nv_score   = "미디어 무관심 극대화. 역발상 저점 신호", 8
+        elif today_ratio <= 0.15:
+            nv_status, nv_label = "green", f"뉴스 희소 (당일 {today_count}건)"
+            nv_desc, nv_score   = "언론 관심 낮음. 조용한 바닥 구간 가능", 4
+        elif today_ratio >= 0.6:
+            nv_status, nv_label = "red", f"뉴스 폭발 (당일 {today_count}건)"
+            nv_desc, nv_score   = "미디어 과열 = 대중 관심 극대 = 고점 경계", -5
+        else:
+            nv_status, nv_label = "yellow", f"뉴스 보통 (당일 {today_count}건)"
+            nv_desc, nv_score   = "정상 수준 언론 관심", 0
+
+        results["news_vacuum"] = {"status": nv_status, "label": nv_label, "desc": nv_desc, "score": nv_score}
+    except Exception:
+        results["news_vacuum"] = {"status": "yellow", "label": "뉴스 지수 — 수집 불가", "desc": "잠시 후 재시도", "score": 0}
+
+    # ── 9. 공매도 잔고 (pykrx) ────────────────────────────────────────
+    try:
+        from pykrx import stock as krx_stock
+        today_str = pd.Timestamp.now().strftime("%Y%m%d")
+        start_str = (pd.Timestamp.now() - pd.Timedelta(days=10)).strftime("%Y%m%d")
+
+        short_df = krx_stock.get_shorting_balance_by_date(start_str, today_str, ticker_code)
+        # 컬럼: 잔고수량, 주식잔고비율, 잔고금액
+        if short_df is not None and len(short_df) >= 2:
+            ratio_col = "주식잔고비율" if "주식잔고비율" in short_df.columns else short_df.columns[1]
+            ratios = short_df[ratio_col].iloc[-3:].tolist()
+            delta = ratios[-1] - ratios[-2] if len(ratios) >= 2 else 0
+            current_ratio = ratios[-1]
+
+            if current_ratio >= 5.0 and delta > 0.3:
+                sh_status, sh_label = "green", f"공매도 잔고 {current_ratio:.1f}% (↑{delta:+.1f}%p)"
+                sh_desc, sh_score   = "잔고 고수준 증가. 숏커버링 반등 트리거 가능", 10
+            elif delta > 0.5:
+                sh_status, sh_label = "green", f"공매도 잔고 급증 (Δ{delta:+.1f}%p)"
+                sh_desc, sh_score   = "급증 = 숏스퀴즈 가능성", 7
+            elif delta < -0.3:
+                sh_status, sh_label = "red", f"공매도 잔고 감소 (Δ{delta:+.1f}%p)"
+                sh_desc, sh_score   = "숏커버 마무리. 역발상 모멘텀 약화", -3
+            else:
+                sh_status, sh_label = "yellow", f"공매도 잔고 {current_ratio:.1f}% — 보합"
                 sh_desc, sh_score   = "유의미한 변화 없음", 0
         else:
-            raise ValueError("공매도 데이터 파싱 실패")
+            raise ValueError("데이터 부족")
 
         results["short"] = {"status": sh_status, "label": sh_label, "desc": sh_desc, "score": sh_score}
-    except Exception:
-        results["short"] = {"status": "yellow", "label": "공매도 잔고 — 수집 불가", "desc": "네이버 응답 없음", "score": 0}
+    except Exception as e:
+        results["short"] = {"status": "yellow", "label": f"공매도 — 오류: {str(e)[:40]}", "desc": "잠시 후 재시도", "score": 0}
     
-    return results, objective_score
+    # ── 최종 총점 (가중치 재조정)
+    # 커뮤니티+뉴스: 25% / 가격(RSI+볼린저+52주): 35% / 수급(PVD+외국인+공매도): 40%
+    price_keys_score  = sum(results.get(k, {}).get("score", 0) for k in ["rsi", "bb", "w52"])
+    supply_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["volume", "foreign", "short", "pvd"])
+    news_score        = results.get("news_vacuum", {}).get("score", 0)   
+    
+        # 각 그룹 정규화 후 가중합
+    price_normalized  = max(0, min(40, price_keys_score  + 20)) * 0.35 / 0.40
+    supply_normalized = max(0, min(40, supply_keys_score + 20)) * 0.40 / 0.40
+    news_normalized   = max(0, min(10, news_score + 5))         * 0.25 / 0.10
+    
+    raw_obj_score = price_normalized + supply_normalized + news_normalized    
+    is_kosdaq = ticker_code.startswith(("0", "1", "2", "3")) and int(ticker_code) >= 200000
+    base_offset = 38 if is_kosdaq else 35
+    objective_score = max(0, min(80, raw_obj_score + base_offset))
+    return results, objective_score, is_kosdaq
+
+def calculate_fomo_index(ticker_code):
+    """
+    개인 순매수 비율 3일합 / 전체거래대금 → 30일 평균 대비 배율
+    높을수록 개미 추격매수 과열 = 역발상 매도 신호
+    """
+    try:
+        from pykrx import stock as krx_stock
+        today_str = pd.Timestamp.now().strftime("%Y%m%d")
+        start_str = (pd.Timestamp.now() - pd.Timedelta(days=35)).strftime("%Y%m%d")
+
+        df_trade = krx_stock.get_market_trading_value_by_date(start_str, today_str, ticker_code)
+        if df_trade is None or len(df_trade) < 5:
+            raise ValueError("데이터 부족")
+
+        # 개인 순매수 컬럼 탐색
+        indiv_col = next((c for c in df_trade.columns if "개인" in str(c)), None)
+        total_col = next((c for c in df_trade.columns if "거래" in str(c) or "합계" in str(c)), None)
+
+        if indiv_col is None:
+            raise ValueError("개인 컬럼 없음")
+
+        indiv_series = df_trade[indiv_col]
+        recent_3d_sum = float(indiv_series.iloc[-3:].sum())
+        hist_mean = float(indiv_series.abs().mean())
+        fomo_ratio = recent_3d_sum / hist_mean if hist_mean > 0 else 0
+
+        if fomo_ratio >= 2.0:
+            fomo_score = 90
+            fomo_label = f"개미 추격매수 과열 ({fomo_ratio:.1f}배)"
+            fomo_desc  = "개인 순매수 급증 = 상투 위험 구간"
+            fomo_color = "#dc2626"
+        elif fomo_ratio >= 1.0:
+            fomo_score = 60
+            fomo_label = f"개미 관심 증가 ({fomo_ratio:.1f}배)"
+            fomo_desc  = "개인 매수 활발. 주의 구간"
+            fomo_color = "#ca8a04"
+        elif fomo_ratio <= -1.5:
+            fomo_score = 15
+            fomo_label = f"개미 이탈 중 ({fomo_ratio:.1f}배)"
+            fomo_desc  = "개인 순매도 = 공포 극대화. 역발상 유리"
+            fomo_color = "#22c55e"
+        else:
+            fomo_score = 40
+            fomo_label = "개미 중립"
+            fomo_desc  = "뚜렷한 쏠림 없음"
+            fomo_color = "#475569"
+
+        return {"score": fomo_score, "label": fomo_label, "desc": fomo_desc, "color": fomo_color}
+    except Exception:
+        return {"score": 50, "label": "FOMO 지수 — 수집 불가", "desc": "pykrx 응답 없음", "color": "#475569"}
  
 st.markdown("### 🔍 종목 탐색기")
  
@@ -552,8 +654,11 @@ st.success(f"✅ **{selected_company}**({ticker_input}) 대시보드를 안정�
 st.markdown("---")
  
 # Download Price Data (KOSPI vs KOSDAQ Suffix Handling)
-@st.cache_data(ttl=60 * 10, show_spinner=False)  # 10분 캐시: 같은 종목 재조회 시 속도 향상, 다른 종목은 무조건 새로 받음
+@st.cache_data(ttl=60 * 10, show_spinner=False)
 def load_price_data(ticker_code: str):
+    result_data = pd.DataFrame()
+    result_suffix = None
+
     for suffix in [".KS", ".KQ"]:
         try:
             data = yf.download(
@@ -564,12 +669,64 @@ def load_price_data(ticker_code: str):
                 auto_adjust=True,
             )
             if not data.empty:
-                return data
+                # MultiIndex 컬럼 평탄화 (yfinance 최신 버전 대응)
+                if isinstance(data.columns, pd.MultiIndex):
+                    data.columns = data.columns.get_level_values(0)
+                result_data = data
+                result_suffix = suffix
+                break
         except Exception:
             continue
-    return pd.DataFrame()
- 
-df = load_price_data(ticker_input)
+
+    # 당일 데이터 누락 시 fdr로 보완
+    if not result_data.empty:
+            last_date = result_data.index[-1].date()
+            today = pd.Timestamp.now().date()
+            if last_date < today:
+                try:
+                    fdr_supplement = fdr.DataReader(ticker_code, start=last_date.strftime("%Y-%m-%d"))
+                    if not fdr_supplement.empty:
+                        # 인덱스 timezone 제거하여 비교 정합성 확보
+                        if isinstance(result_data.columns, pd.MultiIndex):
+                            result_data.columns = result_data.columns.get_level_values(0)
+                        result_data.index = pd.to_datetime(result_data.index).tz_localize(None)
+
+                        result_data.index = pd.to_datetime(result_data.index).tz_localize(None)
+                        fdr_supplement.index = pd.to_datetime(fdr_supplement.index).tz_localize(None)
+
+                        fdr_supplement = fdr_supplement[~fdr_supplement.index.isin(result_data.index)]
+                        # 컬럼 구조 일치시키기 (yfinance: Open/High/Low/Close/Volume)
+                        needed_cols = ["Open", "High", "Low", "Close", "Volume"]
+                        common_cols = [c for c in needed_cols if c in result_data.columns and c in fdr_supplement.columns]
+
+                        if not fdr_supplement.empty and len(common_cols) >= 4:
+                            fdr_supplement = fdr_supplement[common_cols]
+                            result_data = result_data[common_cols]
+                            result_data = pd.concat([result_data, fdr_supplement])
+                            result_data = result_data.sort_index()
+                except Exception:
+                    pass
+
+    # 최종 안전장치: NaN 행 제거
+    if not result_data.empty:
+        if isinstance(result_data.columns, pd.MultiIndex):
+            result_data.columns = result_data.columns.get_level_values(0)
+        if "Close" in result_data.columns:
+            result_data = result_data.dropna(subset=["Close"])
+    else:
+        # yfinance 완전 실패 시 fdr 단독 사용
+        try:
+            fdr_data = fdr.DataReader(ticker_code, start=(pd.Timestamp.now() - pd.Timedelta(days=30)).strftime("%Y-%m-%d"))
+            if not fdr_data.empty:
+                result_data = fdr_data
+                result_suffix = ".KQ"  # fdr만 성공한 경우 임시값, 아래 로직에서 보정 필요
+        except Exception:
+            pass
+
+    return result_data, result_suffix
+# 교체
+df, market_suffix = load_price_data(ticker_input)
+is_kosdaq = (market_suffix == ".KQ")
  
 try:
     if df.empty:
@@ -586,18 +743,37 @@ try:
     
     # Load Real Naver Posts (Sorted by Likes/Views) and DC Simulator
     naver_posts = get_naver_discussion_by_likes(ticker_input)
-    dc_posts = get_dc_posts(selected_company, change_pct)
- 
+
     # ── 커뮤니티 감성 점수 (30%) + 객관 지표 점수 (70%) 통합 ──────
     community_raw, ai_reason, community_score, volatility_warning = analyze_combined_sentiment(
     naver_posts, close_series=close_cleaned
 )
     
     volume_series = df['Volume'].squeeze() if 'Volume' in df.columns else pd.Series(dtype=float)
-    obj_indicators, objective_score = calculate_objective_indicators(close_cleaned, volume_series, ticker_input)
+    obj_indicators, objective_score, is_kosdaq = calculate_objective_indicators(close_cleaned, volume_series, ticker_input)
+    neutral_baseline = 55 if is_kosdaq else 50
+    final_scream_score = int(max(5, min(95, community_score + objective_score + (neutral_baseline - 50))))
+    
  
     # 최종 통합 비명 지수: 커뮤니티 30% + 객관 지표 70%
-    final_scream_score = int(max(5, min(95, community_score + objective_score)))
+    # Z-Score 상대화: 세션 내 누적 불가하므로 종목 시가총액 규모 기반 간이 기준값 사용
+    # 대형주(코스피200): 중립 50 / 코스닥 소형주: 중립 55 (기본 변동성 높음)
+    neutral_baseline = 55 if is_kosdaq else 50
+    raw_combined = community_score + objective_score
+    # 기준점 보정 후 0~100 정규화
+    final_scream_score = int(max(5, min(95, raw_combined + (neutral_baseline - 50))))
+
+    # 임계값 구간 판정 텍스트 (게이지 아래 표시용)
+    if final_scream_score >= 85:
+        scream_tier = ("🔥 극단 공포", "#dc2626", "역발상 매수 최적 구간 — 군중 공포 극대화")
+    elif final_scream_score >= 70:
+        scream_tier = ("😱 공포 구간", "#ea580c", "분할매수 진입 고려 — 공포 우세")
+    elif final_scream_score >= 55:
+        scream_tier = ("⚡ 공포 진입", "#ca8a04", "관심 구간 — 신호 모니터링")
+    elif final_scream_score >= 35:
+        scream_tier = ("😐 중립", "#475569", "군중심리 과열 없음 — 대기")
+    else:
+        scream_tier = ("🚀 탐욕 과열", "#16a34a", "역발상 매도 고려 — FOMO 극대화")
     
     # Display Layout (Ratio 6 : 4 — 오른쪽 사이드에 지표 카드가 많아 여유 필요)
     col_main, col_side = st.columns([6, 4])
@@ -773,13 +949,13 @@ try:
                 return int(df_raw['Close'].squeeze().mean())
 
         ant_refund_line = calc_vwap_refund_line(df)
- 
+
         
         up_down_emoji = "🔺" if change_pct >= 0 else "🔻"
-        st.info(
-            f"현재 주가: **{current_price:,}원** ({up_down_emoji} {change_pct:+.2f}%) | "
-            f"VWAP 평균단가: **{ant_refund_line:,}원** {'🔴 현재가 VWAP 하회' if current_price < ant_refund_line else '🟢 VWAP 상회'}"
-        )
+        vwap_status = "🔴 개미 대부분 손실 구간" if current_price < ant_refund_line else "🟢 개미 대부분 수익 구간"
+        vwap_label  = f"개미 물림 추정가: **{ant_refund_line:,}원** {vwap_status}"
+
+        st.info(f"현재 주가: **{current_price:,}원** ({up_down_emoji} {change_pct:+.2f}%) | {vwap_label}")
         #변동성 경고 표시
         if volatility_warning:
             st.warning(volatility_warning)
@@ -807,43 +983,76 @@ try:
         st.subheader("😱 실시간 공포 스탯")
  
         # ── 통합 비명 지수 게이지 ─────────────────────────────────────
+        # 점수별 게이지 색상
+        if final_scream_score >= 85:
+            gauge_color, number_color = "#dc2626", "#ff4444"
+        elif final_scream_score >= 70:
+            gauge_color, number_color = "#ea580c", "#fb923c"
+        elif final_scream_score >= 55:
+            gauge_color, number_color = "#ca8a04", "#fbbf24"
+        elif final_scream_score >= 35:
+            gauge_color, number_color = "#475569", "#94a3b8"
+        else:
+            gauge_color, number_color = "#16a34a", "#4ade80"
+
         fig_gauge = go.Figure(go.Indicator(
             mode="gauge+number",
             value=final_scream_score,
             domain={'x': [0, 1], 'y': [0, 1]},
-            title={'text': "통합 비명 지수", 'font': {'size': 14}},
+            title={'text': "통합 비명 지수", 'font': {'size': 14, 'color': '#e2e8f0'}},
+            number={'font': {'size': 48, 'color': number_color}},
             gauge={
-                'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                'bar': {'color': "#FF4B4B"},
-                'bgcolor': "white",
-                'borderwidth': 2,
-                'bordercolor': "gray",
+                'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#475569",
+                        'tickfont': {'color': '#94a3b8'}},
+                'bar': {'color': gauge_color},
+                'bgcolor': "#0f172a",
+                'borderwidth': 1,
+                'bordercolor': "#1e293b",
                 'steps': [
-                    {'range': [0,  40], 'color': '#E8F5E9'},
-                    {'range': [40, 70], 'color': '#FFF3E0'},
-                    {'range': [70,100], 'color': '#FFEBEE'},
+                    {'range': [0,  35], 'color': '#052e16'},   # 탐욕 — 다크그린
+                    {'range': [35, 55], 'color': '#1e293b'},   # 중립 — 다크슬레이트
+                    {'range': [55, 70], 'color': '#2d1f00'},   # 공포진입 — 다크옐로
+                    {'range': [70, 85], 'color': '#2d0f00'},   # 공포 — 다크오렌지
+                    {'range': [85,100], 'color': '#1f0000'},   # 극단공포 — 다크레드
                 ],
-                'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 80}
+                'threshold': {'line': {'color': gauge_color, 'width': 3},
+                            'thickness': 0.75, 'value': final_scream_score}
             }
         ))
-        fig_gauge.update_layout(height=210, margin=dict(l=15, r=15, t=35, b=5), font={'family': "Malgun Gothic"})
+        fig_gauge.update_layout(
+            height=210,
+            margin=dict(l=15, r=15, t=35, b=5),
+            font={'family': "Malgun Gothic"},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
         st.plotly_chart(fig_gauge, use_container_width=True)
- 
+        tier_label, tier_color, tier_desc = scream_tier
+        st.markdown(
+            f"""<div style="text-align:center; background:#0f172a; border:1px solid {tier_color}33;
+                border-radius:8px; padding:8px; margin:-4px 0 10px 0;">
+            <span style="color:{tier_color}; font-size:15px; font-weight:700;">{tier_label}</span><br>
+            <span style="color:#94a3b8; font-size:10.5px;">{tier_desc}</span>
+            </div>""",
+            unsafe_allow_html=True
+        )
+        
+
         # 커뮤니티 / 객관 점수 한 줄 분리
-        g_col1, g_col2 = st.columns(2)
+        g_col1, g_col2, g_col3 = st.columns(3)
         with g_col1:
-            st.metric("💬 커뮤니티", f"{community_raw}점", help="네이버·디시 여론 (30%)")
+            st.metric("💬 커뮤니티", f"{community_raw}점", help="네이버 여론 (25%)")
         with g_col2:
-            st.metric("📐 객관지표", f"{objective_score}점", help="RSI·볼린저 등 (70%)")
- 
+            st.metric("📐 객관지표", f"{objective_score}점", help="RSI·수급 등 (75%)")
+        with g_col3:
+            fomo_data = calculate_fomo_index(ticker_input)
+            st.metric("🔥 관심도", f"{fomo_data['score']}점", help="개미 FOMO 지수")
+        
         # ── 종합 판정 카드 (게이지 바로 아래) ────────────────────────
         indicator_meta = [
             ("rsi",      "📈 RSI (14일)",      "가격"),
             ("bb",       "〰️ 볼린저 밴드",     "가격"),
             ("w52",      "📉 52주 신저가",     "가격"),
-            ("ma_array", "📊 이동평균 배열",   "가격"),
-            ("range30",  "📍 30일 위치%",      "가격"),
-            ("gap",      "⚡ 갭하락 감지",     "가격"),
             ("volume",   "🔊 거래량",          "수급"),
             ("foreign",  "🌍 외국인",          "수급"),
             ("short",    "🩳 공매도 잔고",     "수급"),
@@ -869,6 +1078,32 @@ try:
             </div>""",
             unsafe_allow_html=True
         )
+
+        fomo_data = calculate_fomo_index(ticker_input)  # 위에서 이미 호출했으면 재사용
+
+        attention_score = fomo_data["score"]
+        # 관심도 바 렌더링
+        bar_width = attention_score
+        bar_color = fomo_data["color"]
+
+        st.markdown(
+            f"""<div style="background:#0f172a; border:1px solid #1e293b; border-radius:10px;
+                padding:12px 14px; margin:0 0 12px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:12px; font-weight:700; color:#e2e8f0;">🎯 개미 관심도 지수</span>
+                <span style="font-size:11px; color:{bar_color}; font-weight:700;">{fomo_data['label']}</span>
+            </div>
+            <div style="background:#1e293b; border-radius:6px; height:8px; margin-bottom:6px;">
+                <div style="background:{bar_color}; width:{bar_width}%; height:8px; border-radius:6px;
+                    transition:width 0.3s;"></div>
+            </div>
+            <div style="font-size:10.5px; color:#94a3b8;">{fomo_data['desc']}</div>
+            <div style="font-size:10px; color:#475569; margin-top:4px;">
+                📌 관심도 높음+공포 높음 = 반등 강도 ↑ &nbsp;|&nbsp; 관심도 낮음+공포 높음 = 바닥 탐색 중
+            </div>
+            </div>""",
+            unsafe_allow_html=True
+        )
  
         # ── 5개 객관 지표 신호등 카드 ─────────────────────────────────
         STATUS_STYLE = {
@@ -882,14 +1117,12 @@ try:
             ("rsi",      "📈 RSI (14일)"),
             ("bb",       "〰️ 볼린저 밴드"),
             ("w52",      "📉 52주 신저가"),
-            ("ma_array", "📊 이동평균 배열"),
-            ("range30",  "📍 30일 위치%"),
-            ("gap",      "⚡ 갭하락 감지"),
         ]
         supply_keys = [
-            ("volume",  "🔊 거래량 폭발"),
-            ("foreign", "🌍 외국인 동향"),
-            ("short",   "🩳 공매도 잔고"),
+            ("volume",      "🔊 거래량 폭발"),
+            ("pvd",         "💥 공포-거래량 괴리"),
+            ("foreign",     "🌍 외국인 동향"),
+            ("short",       "🩳 공매도 잔고"),
         ]
  
         st.markdown("<p style='font-size:11px; color:#64748b; font-weight:700; margin:0 0 4px 2px; letter-spacing:0.5px;'>▸ 가격 기반</p>", unsafe_allow_html=True)

@@ -676,17 +676,76 @@ def calculate_fomo_index(ticker_code):
         return {"score": 50, "label": f"FOMO — {str(e)[:30]}", "desc": "수집 불가", "color": "#475569"}
  
 st.markdown("### 🔍 종목 탐색기")
- 
+
+def _render_landing():
+    st.markdown("""
+    <div style="text-align:center; padding: 60px 20px 40px 20px;">
+      <div style="font-size:56px; margin-bottom:16px;">🤖</div>
+      <h1 style="font-size:32px; font-weight:800; color:#f1f5f9; margin-bottom:8px;">
+        개미반대로
+      </h1>
+      <p style="font-size:16px; color:#94a3b8; margin-bottom:4px;">
+        군중이 공포에 떨 때, 숫자는 기회를 말한다
+      </p>
+      <p style="font-size:13px; color:#475569; margin-bottom:40px;">
+        네이버 실시간 주주 여론 × 보조지표 × 수급 데이터 통합 역발상 스캐너
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:48px;">
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:12px;
+           padding:20px 24px; text-align:center; min-width:140px;">
+        <div style="font-size:28px; font-weight:800; color:#ef4444;">😱</div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:6px;">통합 비명 지수</div>
+        <div style="font-size:11px; color:#475569;">공포 구간 자동 감지</div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:12px;
+           padding:20px 24px; text-align:center; min-width:140px;">
+        <div style="font-size:28px; font-weight:800; color:#22c55e;">📊</div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:6px;">객관 지표 분석</div>
+        <div style="font-size:11px; color:#475569;">RSI · 볼린저 · 수급</div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:12px;
+           padding:20px 24px; text-align:center; min-width:140px;">
+        <div style="font-size:28px; font-weight:800; color:#f59e0b;">🔥</div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:6px;">개미 관심도</div>
+        <div style="font-size:11px; color:#475569;">FOMO 과열 탐지</div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:12px;
+           padding:20px 24px; text-align:center; min-width:140px;">
+        <div style="font-size:28px; font-weight:800; color:#818cf8;">💬</div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:6px;">실시간 여론</div>
+        <div style="font-size:11px; color:#475569;">네이버 토론방 분석</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align:center; margin-bottom:8px;">
+      <span style="font-size:13px; color:#64748b;">
+        ⚠️ 본 서비스는 투자 참고용이며, 투자 판단의 최종 책임은 본인에게 있습니다
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
 # Smart Search Box with Autocomplete
+# 교체
 selected_item = st_searchbox(
     search_companies,
-    default="삼성전자 (005930)",
+    default=st.session_state.get("last_selected", None),
     key="stock_searchbox",
-    placeholder="조회할 국내 종목명을 입력하세요"
+    placeholder="🔍 종목명 또는 종목코드 입력 (예: 삼성전자, 005930)"
 )
- 
-if not selected_item or "(" not in selected_item:
-    st.error("⚠️ 검색 결과 목록에서 연동할 종목을 확실하게 마우스로 클릭하거나 선택해 주세요.")
+
+# 유효한 선택이면 저장, 아니면 마지막 저장값 사용
+if selected_item and "(" in selected_item:
+    st.session_state["last_selected"] = selected_item
+    st.session_state["dashboard_ready"] = True
+elif st.session_state.get("dashboard_ready"):
+    selected_item = st.session_state["last_selected"]
+else:
+    _render_landing()
     st.stop()
  
 # Parse Ticker and Name
@@ -787,24 +846,57 @@ try:
     # Load Real Naver Posts (Sorted by Likes/Views) and DC Simulator
     naver_posts = get_naver_discussion_by_likes(ticker_input)
 
-    # ── 커뮤니티 감성 점수 (30%) + 객관 지표 점수 (70%) 통합 ──────
     community_raw, ai_reason, community_score, volatility_warning = analyze_combined_sentiment(
-    naver_posts, close_series=close_cleaned
-)
-    
+        naver_posts, close_series=close_cleaned
+    )
+
     volume_series = df['Volume'].squeeze() if 'Volume' in df.columns else pd.Series(dtype=float)
     obj_indicators, objective_score, is_kosdaq = calculate_objective_indicators(close_cleaned, volume_series, ticker_input)
-    neutral_baseline = 55 if is_kosdaq else 50
-    final_scream_score = int(max(5, min(95, community_score + objective_score + (neutral_baseline - 50))))
-    
- 
-    # 최종 통합 비명 지수: 커뮤니티 30% + 객관 지표 70%
-    # Z-Score 상대화: 세션 내 누적 불가하므로 종목 시가총액 규모 기반 간이 기준값 사용
-    # 대형주(코스피200): 중립 50 / 코스닥 소형주: 중립 55 (기본 변동성 높음)
-    neutral_baseline = 55 if is_kosdaq else 50
-    raw_combined = community_score + objective_score
-    # 기준점 보정 후 0~100 정규화
-    final_scream_score = int(max(5, min(95, raw_combined + (neutral_baseline - 50))))
+    fomo_data = calculate_fomo_index(ticker_input)
+
+    rsi_val       = obj_indicators.get("rsi",     {}).get("value", 50) or 50
+    w52_score     = obj_indicators.get("w52",     {}).get("score", 0)
+    vol_score     = obj_indicators.get("volume",  {}).get("score", 0)
+    pvd_score     = obj_indicators.get("pvd",     {}).get("score", 0)
+    bb_score      = obj_indicators.get("bb",      {}).get("score", 0)
+    foreign_score = obj_indicators.get("foreign", {}).get("score", 0)
+    short_score   = obj_indicators.get("short",   {}).get("score", 0)
+    fomo_score    = fomo_data["score"]
+
+    is_near_high   = w52_score <= -8
+    is_near_low    = w52_score >= 10
+    is_fomo_hot    = fomo_score >= 70
+    is_panic_sell  = pvd_score >= 12
+    is_rsi_hot     = rsi_val >= 65
+    is_rsi_cold    = rsi_val <= 35
+    is_supply_fear = (foreign_score + short_score) >= 10
+
+    if   is_near_high and is_fomo_hot and is_rsi_hot: base = 15
+    elif is_near_high and is_fomo_hot:                base = 22
+    elif is_near_high and is_rsi_hot:                 base = 28
+    elif is_near_high:                                base = 35
+    elif is_near_low and is_panic_sell and is_rsi_cold: base = 88
+    elif is_near_low and is_panic_sell:               base = 78
+    elif is_near_low and is_rsi_cold:                 base = 72
+    elif is_near_low:                                 base = 63
+    elif is_panic_sell and is_rsi_cold:               base = 70
+    elif is_rsi_cold and bb_score >= 8:               base = 65
+    elif is_rsi_hot  and is_fomo_hot:                 base = 25
+    elif is_rsi_hot:                                  base = 38
+    else:                                             base = 50
+
+    adj = 0
+    if is_supply_fear:      adj += 8
+    if foreign_score >= 10: adj += 4
+    if short_score   >= 7:  adj += 3
+    if vol_score     >= 10: adj += 4
+    if is_fomo_hot:         adj -= 7
+    if community_raw >= 65: adj += 4
+    if community_raw <= 35: adj -= 4
+    adj = max(-10, min(10, adj))
+
+    kosdaq_adj = 3 if is_kosdaq else 0
+    final_scream_score = int(max(5, min(95, base + adj + kosdaq_adj)))
 
     # 임계값 구간 판정 텍스트 (게이지 아래 표시용)
     if final_scream_score >= 85:

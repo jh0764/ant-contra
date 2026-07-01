@@ -277,7 +277,8 @@ def analyze_combined_sentiment(naver_posts, close_series=None):
     base_score = 50
     score_offset = (normalized_fear * 15) - (normalized_greedy * 12)
     raw_score = max(5, min(95, base_score + score_offset))
-    community_score = raw_score * sentiment_weight
+    # 교체
+    community_score = int(raw_score * sentiment_weight)
 
     if raw_score >= 70:
         reason = f"공포 밀도({normalized_fear:.1f}) 높음. 추천글 대부분 투매·하락에 공감."
@@ -380,96 +381,103 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
     except Exception:
         results["bb"] = {"status": "yellow", "label": "볼린저 밴드 — 계산 불가", "desc": "데이터 부족", "score": 0}
  
-    # ── 3. 52주 신저가 근접도 ──────────────────────────────────────
+    # ── 3. 52주 신저가/신고가 근접도 (양방향) ─────────────────────────
     try:
         week52_low = float(close_series.min())
         week52_high = float(close_series.max())
         current = float(close_series.iloc[-1])
         gap_from_low_pct = ((current - week52_low) / week52_low) * 100
- 
+        gap_from_high_pct = ((week52_high - current) / week52_high) * 100
+
         if gap_from_low_pct <= 5:
-            w52_status = "green"
-            w52_label = f"52주 신저가 +{gap_from_low_pct:.1f}%"
-            w52_desc = "신저가 5% 이내. 역발상 매수 최적 구간"
-            w52_score = 10
+            w52_status, w52_label = "green", f"52주 신저가 +{gap_from_low_pct:.1f}%"
+            w52_desc, w52_score   = "신저가 5% 이내. 역발상 매수 최적 구간", 12
+        elif gap_from_high_pct <= 3:
+            w52_status, w52_label = "red", f"52주 신고가 근접 (-{gap_from_high_pct:.1f}%)"
+            w52_desc, w52_score   = "신고가 구간. 공포 아닌 과열 국면. 추격 위험", -10
         elif gap_from_low_pct <= 15:
-            w52_status = "yellow"
-            w52_label = f"52주 저가 +{gap_from_low_pct:.1f}%"
-            w52_desc = "저점 영역 내 위치. 분할 접근 고려 가능"
-            w52_score = 4
+            w52_status, w52_label = "yellow", f"52주 저가 +{gap_from_low_pct:.1f}%"
+            w52_desc, w52_score   = "저점 영역 내 위치", 4
         else:
-            high_gap = ((week52_high - current) / week52_high) * 100
-            w52_status = "red"
-            w52_label = f"52주 고가 대비 -{high_gap:.1f}%"
-            w52_desc = "고점 대비 조정 구간. 추가 하락 여지 있음"
-            w52_score = 0
+            w52_status, w52_label = "yellow", f"52주 고가 대비 -{gap_from_high_pct:.1f}%"
+            w52_desc, w52_score   = "중립 구간", 0
         results["w52"] = {"status": w52_status, "label": w52_label, "desc": w52_desc, "score": w52_score}
     except Exception:
         results["w52"] = {"status": "yellow", "label": "52주 데이터 — 계산 불가", "desc": "데이터 부족", "score": 0}
  
-    # ── 4. 거래량 폭발 지수 ────────────────────────────────────────
+    # ── 4. 거래량 폭발 지수 (가격 방향 결합) ─────────────────────────
     try:
         vol_today = float(volume_series.iloc[-1])
         vol_avg20 = float(volume_series.rolling(20).mean().iloc[-1])
         vol_ratio = vol_today / vol_avg20 if vol_avg20 > 0 else 1.0
- 
-        if vol_ratio >= 3.0:
-            vol_status = "green"
-            vol_label = f"거래량 평균 대비 {vol_ratio:.1f}배 폭발"
-            vol_desc = "극단적 패닉셀 or 세력 유입 가능성. 바닥 신호 유력"
-            vol_score = 10
-        elif vol_ratio >= 2.0:
-            vol_status = "green"
-            vol_label = f"거래량 평균 대비 {vol_ratio:.1f}배"
-            vol_desc = "비정상적 거래량 증가. 변곡점 가능성"
-            vol_score = 5
+        price_chg_today = (float(close_series.iloc[-1]) - float(close_series.iloc[-2])) / float(close_series.iloc[-2])
+
+        if vol_ratio >= 2.0 and price_chg_today < -0.01:
+            vol_status, vol_label = "green", f"거래량 {vol_ratio:.1f}배 + 하락 — 투매 폭발"
+            vol_desc, vol_score   = "패닉셀 거래량. 바닥 신호 유력", 12
+        elif vol_ratio >= 2.0 and price_chg_today > 0.01:
+            vol_status, vol_label = "red", f"거래량 {vol_ratio:.1f}배 + 상승 — 매수세 폭발"
+            vol_desc, vol_score   = "상승 동반 거래량 = 과열/추격 위험. 공포 아님", -8
         elif vol_ratio <= 0.4:
-            vol_status = "yellow"
-            vol_label = f"거래량 평균 대비 {vol_ratio:.1f}배 (무기력)"
-            vol_desc = "투항 이후 무관심 구간. 추세 전환 대기"
-            vol_score = 3
+            vol_status, vol_label = "yellow", f"거래량 {vol_ratio:.1f}배 — 무기력"
+            vol_desc, vol_score   = "투항 이후 무관심 구간", 3
         else:
-            vol_status = "red"
-            vol_label = f"거래량 평균 대비 {vol_ratio:.1f}배 (보통)"
-            vol_desc = "특이 거래량 없음. 신호 미포착"
-            vol_score = 0
+            vol_status, vol_label = "yellow", f"거래량 {vol_ratio:.1f}배 — 보통"
+            vol_desc, vol_score   = "특이 신호 없음", 0
         results["volume"] = {"status": vol_status, "label": vol_label, "desc": vol_desc, "score": vol_score}
     except Exception:
         results["volume"] = {"status": "yellow", "label": "거래량 — 계산 불가", "desc": "데이터 부족", "score": 0}
- 
-    # ── 5. 외국인 순매수 (pykrx) ──────────────────────────────────────
+# ── 5. 외국인 순매수
     try:
-        from pykrx import stock as krx_stock
-        today_str = pd.Timestamp.now().strftime("%Y%m%d")
-        start_str = (pd.Timestamp.now() - pd.Timedelta(days=10)).strftime("%Y%m%d")
+        url_f  = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
+        hdrs_f = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+        }
+        resp_f = requests.get(url_f, headers=hdrs_f, timeout=6)
+        content = resp_f.content
+        html_f = content.decode("euc-kr", errors="replace") if b"euc-kr" in content[:500].lower() else content.decode("utf-8", errors="replace")
+        soup_f = BeautifulSoup(html_f, "html.parser")
 
-        trade_df = krx_stock.get_market_trading_value_by_date(start_str, today_str, ticker_code)
-        # 컬럼: 기관합계, 외국인합계, 개인, ...
-        if trade_df is not None and len(trade_df) >= 2:
-            foreign_col = "외국인합계" if "외국인합계" in trade_df.columns else trade_df.columns[1]
-            recent = trade_df[foreign_col].iloc[-3:].tolist()
-            recent_sum = int(sum(recent) / 1e8)  # 억 단위 변환
-            consec_sell = sum(1 for v in recent if v < 0)
-            consec_buy  = sum(1 for v in recent if v > 0)
+        rows_f = soup_f.select("table.type2 tr")
+        net_values = []
+        for row in rows_f:
+            tds = row.select("td")
+            if len(tds) < 5:
+                continue
+            try:
+                val_text = tds[4].get_text().strip().replace(",", "").replace("+", "")
+                val = int(val_text)
+                net_values.append(val)
+            except Exception:
+                continue
+            if len(net_values) >= 5:
+                break
 
-            if consec_sell >= 3:
-                fg_status, fg_label = "green", f"외국인 3일 연속 순매도 ({recent_sum:+,}억)"
-                fg_desc, fg_score   = "기관 이탈 공포 극대화. 역발상 매수 신호", 10
-            elif consec_sell == 2:
-                fg_status, fg_label = "yellow", f"외국인 2일 연속 순매도 ({recent_sum:+,}억)"
-                fg_desc, fg_score   = "매도 압력 지속. 추이 모니터링", 4
-            elif consec_buy >= 2:
-                fg_status, fg_label = "red", f"외국인 순매수 중 ({recent_sum:+,}억)"
-                fg_desc, fg_score   = "기관 유입 중. 역발상 타이밍 아님", -3
-            else:
-                fg_status, fg_label = "yellow", "외국인 혼조세"
-                fg_desc, fg_score   = "뚜렷한 방향성 없음", 0
+        if len(net_values) < 2:
+            raise ValueError(f"파싱 실패: {len(net_values)}건")
+
+        consec_sell = sum(1 for v in net_values[:3] if v < 0)
+        consec_buy  = sum(1 for v in net_values[:3] if v > 0)
+        recent_sum  = sum(net_values[:3]) // 100  # 억 단위
+
+        if consec_sell >= 3:
+            fg_status, fg_label = "green", f"외국인 3일 연속 순매도 ({recent_sum:+,}억)"
+            fg_desc, fg_score   = "외국인 이탈 공포 극대화. 역발상 매수 신호", 10
+        elif consec_sell == 2:
+            fg_status, fg_label = "yellow", f"외국인 2일 연속 순매도 ({recent_sum:+,}억)"
+            fg_desc, fg_score   = "매도 압력 지속. 추이 모니터링", 4
+        elif consec_buy >= 2:
+            fg_status, fg_label = "red", f"외국인 순매수 중 ({recent_sum:+,}억)"
+            fg_desc, fg_score   = "외국인 유입 중. 역발상 타이밍 아님", -3
         else:
-            raise ValueError("데이터 부족")
+            fg_status, fg_label = "yellow", "외국인 혼조세"
+            fg_desc, fg_score   = "뚜렷한 방향성 없음", 0
 
         results["foreign"] = {"status": fg_status, "label": fg_label, "desc": fg_desc, "score": fg_score}
+
     except Exception as e:
-        results["foreign"] = {"status": "yellow", "label": f"외국인 — 오류: {str(e)[:40]}", "desc": "잠시 후 재시도", "score": 0}
+        results["foreign"] = {"status": "yellow", "label": f"외국인 — {str(e)[:45]}", "desc": "잠시 후 재시도", "score": 0}
 
 # ── 10. 공포-거래량 괴리 지수 ─────────────────────────────────
     try:
@@ -531,39 +539,75 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
     except Exception:
         results["news_vacuum"] = {"status": "yellow", "label": "뉴스 지수 — 수집 불가", "desc": "잠시 후 재시도", "score": 0}
 
-    # ── 9. 공매도 잔고 (pykrx) ────────────────────────────────────────
+# ── 9. 공매도 (네이버 금융 크롤링) ───────────────────────────
     try:
-        from pykrx import stock as krx_stock
-        today_str = pd.Timestamp.now().strftime("%Y%m%d")
-        start_str = (pd.Timestamp.now() - pd.Timedelta(days=10)).strftime("%Y%m%d")
+        url_s = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
+        hdrs  = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+        }
+        resp_s  = requests.get(url_s, headers=hdrs, timeout=6)
+        soup_s  = BeautifulSoup(resp_s.content, "html.parser")
 
-        short_df = krx_stock.get_shorting_balance_by_date(start_str, today_str, ticker_code)
-        # 컬럼: 잔고수량, 주식잔고비율, 잔고금액
-        if short_df is not None and len(short_df) >= 2:
-            ratio_col = "주식잔고비율" if "주식잔고비율" in short_df.columns else short_df.columns[1]
-            ratios = short_df[ratio_col].iloc[-3:].tolist()
-            delta = ratios[-1] - ratios[-2] if len(ratios) >= 2 else 0
-            current_ratio = ratios[-1]
+        # 공매도 비율 테이블 탐색
+        tables = soup_s.select("table.type2")
+        short_ratios = []
+        for table in tables:
+            for row in table.select("tr"):
+                tds = row.select("td")
+                if len(tds) >= 4:
+                    try:
+                        val = float(tds[3].get_text().strip().replace(",", "").replace("%", ""))
+                        if 0 < val < 100:
+                            short_ratios.append(val)
+                    except Exception:
+                        continue
 
-            if current_ratio >= 5.0 and delta > 0.3:
-                sh_status, sh_label = "green", f"공매도 잔고 {current_ratio:.1f}% (↑{delta:+.1f}%p)"
-                sh_desc, sh_score   = "잔고 고수준 증가. 숏커버링 반등 트리거 가능", 10
-            elif delta > 0.5:
-                sh_status, sh_label = "green", f"공매도 잔고 급증 (Δ{delta:+.1f}%p)"
-                sh_desc, sh_score   = "급증 = 숏스퀴즈 가능성", 7
-            elif delta < -0.3:
-                sh_status, sh_label = "red", f"공매도 잔고 감소 (Δ{delta:+.1f}%p)"
-                sh_desc, sh_score   = "숏커버 마무리. 역발상 모멘텀 약화", -3
-            else:
-                sh_status, sh_label = "yellow", f"공매도 잔고 {current_ratio:.1f}% — 보합"
-                sh_desc, sh_score   = "유의미한 변화 없음", 0
+        if len(short_ratios) < 3:
+            # 외국인 페이지에 공매도 없으면 종목 공매도 페이지 시도
+            url_s2  = f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+            resp_s2 = requests.get(url_s2, headers=hdrs, timeout=6)
+            soup_s2 = BeautifulSoup(resp_s2.content, "html.parser")
+
+            for tag in soup_s2.find_all(string=lambda t: t and "공매도" in t):
+                parent = tag.find_parent("tr")
+                if parent:
+                    tds = parent.select("td")
+                    for td in tds:
+                        try:
+                            val = float(td.get_text().strip().replace(",","").replace("%",""))
+                            if 0 < val < 100:
+                                short_ratios.append(val)
+                        except Exception:
+                            continue
+
+        if len(short_ratios) < 2:
+            raise ValueError("공매도 비율 파싱 실패")
+
+        recent = short_ratios[0]
+        prev   = sum(short_ratios[1:4]) / min(3, len(short_ratios[1:4]))
+        delta  = recent - prev
+
+        if recent >= 8.0 and delta > 0.5:
+            sh_status, sh_label = "green", f"공매도 비율 {recent:.1f}% (↑{delta:+.1f}%p)"
+            sh_desc, sh_score   = "고수준 증가 → 숏스퀴즈 반등 트리거 가능", 10
+        elif delta > 1.0:
+            sh_status, sh_label = "green", f"공매도 급증 (Δ{delta:+.1f}%p)"
+            sh_desc, sh_score   = "급증 → 숏스퀴즈 가능성", 7
+        elif delta < -0.5:
+            sh_status, sh_label = "red",   f"공매도 감소 (Δ{delta:+.1f}%p)"
+            sh_desc, sh_score   = "숏커버 마무리. 역발상 모멘텀 약화", -3
         else:
-            raise ValueError("데이터 부족")
+            sh_status, sh_label = "yellow", f"공매도 비율 {recent:.1f}% — 보합"
+            sh_desc, sh_score   = "유의미한 변화 없음", 0
 
-        results["short"] = {"status": sh_status, "label": sh_label, "desc": sh_desc, "score": sh_score}
+        results["short"] = {"status": sh_status, "label": sh_label,
+                            "desc": sh_desc, "score": sh_score}
+
     except Exception as e:
-        results["short"] = {"status": "yellow", "label": f"공매도 — 오류: {str(e)[:40]}", "desc": "잠시 후 재시도", "score": 0}
-    
+        results["short"] = {"status": "yellow", "label": f"공매도 — {str(e)[:45]}",
+                            "desc": "잠시 후 재시도", "score": 0}
+
     # ── 최종 총점 (가중치 재조정)
     # 커뮤니티+뉴스: 25% / 가격(RSI+볼린저+52주): 35% / 수급(PVD+외국인+공매도): 40%
     price_keys_score  = sum(results.get(k, {}).get("score", 0) for k in ["rsi", "bb", "w52"])
@@ -571,66 +615,65 @@ def calculate_objective_indicators(close_series, volume_series, ticker_code):
     news_score        = results.get("news_vacuum", {}).get("score", 0)   
     
         # 각 그룹 정규화 후 가중합
-    price_normalized  = max(0, min(40, price_keys_score  + 20)) * 0.35 / 0.40
-    supply_normalized = max(0, min(40, supply_keys_score + 20)) * 0.40 / 0.40
-    news_normalized   = max(0, min(10, news_score + 5))         * 0.25 / 0.10
+# calculate_objective_indicators 함수 마지막 총점 계산 교체
+    price_normalized  = max(-30, min(40, price_keys_score))  * 0.35
+    supply_normalized = max(-30, min(40, supply_keys_score)) * 0.40
+    news_normalized   = max(-10, min(10, news_score))        * 0.25
     
-    raw_obj_score = price_normalized + supply_normalized + news_normalized    
-    is_kosdaq = ticker_code.startswith(("0", "1", "2", "3")) and int(ticker_code) >= 200000
-    base_offset = 38 if is_kosdaq else 35
-    objective_score = max(0, min(80, raw_obj_score + base_offset))
+    raw_obj_score = price_normalized + supply_normalized + news_normalized
+    base_offset = 40 if is_kosdaq else 35
+    objective_score = int(max(0, min(80, raw_obj_score * 0.7 + base_offset)))
     return results, objective_score, is_kosdaq
 
 def calculate_fomo_index(ticker_code):
-    """
-    개인 순매수 비율 3일합 / 전체거래대금 → 30일 평균 대비 배율
-    높을수록 개미 추격매수 과열 = 역발상 매도 신호
-    """
     try:
-        from pykrx import stock as krx_stock
-        today_str = pd.Timestamp.now().strftime("%Y%m%d")
-        start_str = (pd.Timestamp.now() - pd.Timedelta(days=35)).strftime("%Y%m%d")
+        url = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
+        hdrs = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+        }
+        resp = requests.get(url, headers=hdrs, timeout=6)
+        html = resp.content.decode("euc-kr", errors="replace") if b"euc-kr" in resp.content[:500].lower() else resp.content.decode("utf-8", errors="replace")
+        soup = BeautifulSoup(html, "html.parser")
 
-        df_trade = krx_stock.get_market_trading_value_by_date(start_str, today_str, ticker_code)
-        if df_trade is None or len(df_trade) < 5:
-            raise ValueError("데이터 부족")
+        # 개인 순매수 컬럼 (frgn 페이지 테이블: 날짜/외국인/기관/개인 순)
+        rows = soup.select("table.type2 tr")
+        indiv_values = []
+        for row in rows:
+            tds = row.select("td")
+            if len(tds) < 6:
+                continue
+            try:
+                val = int(tds[5].get_text().strip().replace(",","").replace("+",""))
+                indiv_values.append(val)
+            except Exception:
+                continue
+            if len(indiv_values) >= 10:
+                break
 
-        # 개인 순매수 컬럼 탐색
-        indiv_col = next((c for c in df_trade.columns if "개인" in str(c)), None)
-        total_col = next((c for c in df_trade.columns if "거래" in str(c) or "합계" in str(c)), None)
+        if len(indiv_values) < 3:
+            raise ValueError("개인 데이터 부족")
 
-        if indiv_col is None:
-            raise ValueError("개인 컬럼 없음")
-
-        indiv_series = df_trade[indiv_col]
-        recent_3d_sum = float(indiv_series.iloc[-3:].sum())
-        hist_mean = float(indiv_series.abs().mean())
-        fomo_ratio = recent_3d_sum / hist_mean if hist_mean > 0 else 0
+        recent_3d = sum(indiv_values[:3])
+        hist_mean = sum(abs(v) for v in indiv_values) / len(indiv_values)
+        fomo_ratio = recent_3d / hist_mean if hist_mean > 0 else 0
 
         if fomo_ratio >= 2.0:
-            fomo_score = 90
-            fomo_label = f"개미 추격매수 과열 ({fomo_ratio:.1f}배)"
-            fomo_desc  = "개인 순매수 급증 = 상투 위험 구간"
-            fomo_color = "#dc2626"
+            score, label = 90, f"개미 추격매수 과열 ({fomo_ratio:.1f}배)"
+            desc, color  = "개인 순매수 급증 = 상투 위험 구간", "#dc2626"
         elif fomo_ratio >= 1.0:
-            fomo_score = 60
-            fomo_label = f"개미 관심 증가 ({fomo_ratio:.1f}배)"
-            fomo_desc  = "개인 매수 활발. 주의 구간"
-            fomo_color = "#ca8a04"
+            score, label = 60, f"개미 관심 증가 ({fomo_ratio:.1f}배)"
+            desc, color  = "개인 매수 활발. 주의 구간", "#ca8a04"
         elif fomo_ratio <= -1.5:
-            fomo_score = 15
-            fomo_label = f"개미 이탈 중 ({fomo_ratio:.1f}배)"
-            fomo_desc  = "개인 순매도 = 공포 극대화. 역발상 유리"
-            fomo_color = "#22c55e"
+            score, label = 15, f"개미 이탈 중 ({fomo_ratio:.1f}배)"
+            desc, color  = "개인 순매도 = 공포 극대화. 역발상 유리", "#22c55e"
         else:
-            fomo_score = 40
-            fomo_label = "개미 중립"
-            fomo_desc  = "뚜렷한 쏠림 없음"
-            fomo_color = "#475569"
+            score, label = 40, "개미 중립"
+            desc, color  = "뚜렷한 쏠림 없음", "#475569"
 
-        return {"score": fomo_score, "label": fomo_label, "desc": fomo_desc, "color": fomo_color}
-    except Exception:
-        return {"score": 50, "label": "FOMO 지수 — 수집 불가", "desc": "pykrx 응답 없음", "color": "#475569"}
+        return {"score": score, "label": label, "desc": desc, "color": color}
+    except Exception as e:
+        return {"score": 50, "label": f"FOMO — {str(e)[:30]}", "desc": "수집 불가", "color": "#475569"}
  
 st.markdown("### 🔍 종목 탐색기")
  
@@ -805,7 +848,7 @@ try:
             <div id="hoverDate" style="color:#9CA3AF; font-size:13px; margin-bottom:2px;"></div>
             <div id="hoverPrice" style="color:#FFFFFF; font-size:28px; font-weight:700;"></div>
           </div>
-          <svg id="stockSvg" width="100%" height="430" viewBox="0 0 1000 430" preserveAspectRatio="none"
+          <svg id="stockSvg" width="100%" height="430" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet"
                style="display:block; cursor:crosshair;">
             <line id="spikeLine" x1="0" y1="0" x2="0" y2="430" stroke="rgba(255,255,255,0.35)"
                   stroke-width="1" style="display:none;" />
@@ -852,19 +895,6 @@ try:
                 return padTop + (1 - (price - minP) / range) * usableH;
             }}
  
-            // 라인 패스 생성
-            let pathD = "";
-            data.forEach((d, i) => {{
-                const x = xPos(i), y = yPos(d.price);
-                pathD += (i === 0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
-            }});
-            pathEl.setAttribute("d", pathD);
- 
-            // 최고/최저 마커 배치
-            const maxX = xPos(maxIdx), maxY = yPos(data[maxIdx].price);
-            const minX = xPos(minIdx), minY = yPos(data[minIdx].price);
-            maxDot.setAttribute("cx", maxX); maxDot.setAttribute("cy", maxY);
-            minDot.setAttribute("cx", minX); minDot.setAttribute("cy", minY);
  
             // 점이 차트 좌/우 가장자리 근처에 있으면 텍스트가 viewBox 밖으로 잘리므로
             // text-anchor를 동적으로 바꿔서 항상 차트 안쪽으로 텍스트가 뻗어나가도록 처리
@@ -873,16 +903,33 @@ try:
                 if (x > W - padX - 40) return "end";  // 오른쪽 가장자리 → 점 기준 왼쪽으로 텍스트
                 return "middle";
             }}
- 
-            maxLabel.setAttribute("x", maxX);
-            maxLabel.setAttribute("y", Math.max(16, maxY - 16));
-            maxLabel.setAttribute("text-anchor", anchorFor(maxX));
-            maxLabel.textContent = "최고 " + data[maxIdx].price.toLocaleString() + "원";
- 
-            minLabel.setAttribute("x", minX);
-            minLabel.setAttribute("y", Math.min(H - 6, minY + 24));
-            minLabel.setAttribute("text-anchor", anchorFor(minX));
-            minLabel.textContent = "최저 " + data[minIdx].price.toLocaleString() + "원";
+
+            function redraw() {{
+                let pathD = "";
+                data.forEach((d, i) => {{
+                    const x = xPos(i), y = yPos(d.price);
+                    pathD += (i === 0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
+                }});
+                pathEl.setAttribute("d", pathD);
+
+                const maxX = xPos(maxIdx), maxY = yPos(data[maxIdx].price);
+                const minX = xPos(minIdx), minY = yPos(data[minIdx].price);
+                maxDot.setAttribute("cx", maxX); maxDot.setAttribute("cy", maxY);
+                minDot.setAttribute("cx", minX); minDot.setAttribute("cy", minY);
+
+                maxLabel.setAttribute("x", maxX);
+                maxLabel.setAttribute("y", Math.max(16, maxY - 16));
+                maxLabel.setAttribute("text-anchor", anchorFor(maxX));
+                maxLabel.textContent = "최고 " + data[maxIdx].price.toLocaleString() + "원";
+
+                minLabel.setAttribute("x", minX);
+                minLabel.setAttribute("y", Math.min(H - 6, minY + 24));
+                minLabel.setAttribute("text-anchor", anchorFor(minX));
+                minLabel.textContent = "최저 " + data[minIdx].price.toLocaleString() + "원";
+            }}
+
+            redraw();
+            window.addEventListener("resize", redraw);
  
             function findNearestIndex(mouseX) {{
                 let nearest = 0, minDist = Infinity;
@@ -1039,14 +1086,14 @@ try:
         
 
         # 커뮤니티 / 객관 점수 한 줄 분리
-        g_col1, g_col2, g_col3 = st.columns(3)
+        # 교체
+        g_col1, g_col2 = st.columns(2)
         with g_col1:
-            st.metric("💬 커뮤니티", f"{community_raw}점", help="네이버 여론 (25%)")
+            st.metric("💬 커뮤니티", f"{int(community_raw)}점", help="네이버 여론 (25%)")
         with g_col2:
-            st.metric("📐 객관지표", f"{objective_score}점", help="RSI·수급 등 (75%)")
-        with g_col3:
-            fomo_data = calculate_fomo_index(ticker_input)
-            st.metric("🔥 관심도", f"{fomo_data['score']}점", help="개미 FOMO 지수")
+            st.metric("📐 객관지표", f"{int(objective_score)}점", help="RSI·수급 등 (75%)")
+
+        fomo_data = calculate_fomo_index(ticker_input)
         
         # ── 종합 판정 카드 (게이지 바로 아래) ────────────────────────
         indicator_meta = [
@@ -1082,20 +1129,19 @@ try:
         fomo_data = calculate_fomo_index(ticker_input)  # 위에서 이미 호출했으면 재사용
 
         attention_score = fomo_data["score"]
-        # 관심도 바 렌더링
-        bar_width = attention_score
+        # 기존 관심도 패널 st.markdown 교체
+        bar_width = min(100, int(fomo_data["score"]))
         bar_color = fomo_data["color"]
-
         st.markdown(
             f"""<div style="background:#0f172a; border:1px solid #1e293b; border-radius:10px;
                 padding:12px 14px; margin:0 0 12px 0;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:12px; font-weight:700; color:#e2e8f0;">🎯 개미 관심도 지수</span>
-                <span style="font-size:11px; color:{bar_color}; font-weight:700;">{fomo_data['label']}</span>
+                <span style="font-size:20px; font-weight:800; color:{bar_color};">{int(fomo_data['score'])}점</span>
             </div>
+            <div style="font-size:11px; color:{bar_color}; font-weight:600; margin-bottom:6px;">{fomo_data['label']}</div>
             <div style="background:#1e293b; border-radius:6px; height:8px; margin-bottom:6px;">
-                <div style="background:{bar_color}; width:{bar_width}%; height:8px; border-radius:6px;
-                    transition:width 0.3s;"></div>
+                <div style="background:{bar_color}; width:{bar_width}%; height:8px; border-radius:6px;"></div>
             </div>
             <div style="font-size:10.5px; color:#94a3b8;">{fomo_data['desc']}</div>
             <div style="font-size:10px; color:#475569; margin-top:4px;">

@@ -24,13 +24,20 @@ greedy_dictionary = [
         "수급좋다", "외인유입", "기관유입", "대량매수", "쌍바닥"
     ]
 
-        # ── 5개 객관 지표 신호등 카드 ─────────────────────────────────
-STATUS_STYLE = {"green":  {"bg": "#0d2b1a", "border": "#22c55e", "badge_bg": "#16a34a", "badge_text": "✅ 신호 포착"},
-            "yellow": {"bg": "#1c1a00", "border": "#eab308", "badge_bg": "#854d0e", "badge_text": "⚠️ 중립"},
-            "red":    {"bg": "#1a0606", "border": "#ef4444", "badge_bg": "#991b1b", "badge_text": "❌ 미포착"},
-            }
-
-PRICE_STYLE = {
-      "up":   {"text": "#ef4444", "badge_bg": "#fee2e2"},
-      "down": {"text": "#3b82f6", "badge_bg": "#dbeafe"},
+THEME = {
+    "bg": "#EEF0F3", "surface": "#FFFFFF", "border": "#DDE1E6",
+    "text_main": "#1A1D29", "text_sub": "#6B7280",
 }
+PRICE_COLOR = {"up": "#f04452", "down": "#3182f6"}
+
+TICKER_BADGE_COLORS = ["#f04452", "#3182f6", "#16a34a", "#eab308",
+                        "#8b5cf6", "#ec4899", "#0891b2", "#f97316"]
+
+STATUS_STYLE = {
+    "green":  {"bg": "#DCFCE7", "border": "#16A34A", "badge_bg": "#16A34A", "badge_text": "포착",   "badge_color": "#FFFFFF"},
+    "yellow": {"bg": "#FEF3C7", "border": "#CA8A04", "badge_bg": "#CA8A04", "badge_text": "중립",   "badge_color": "#FFFFFF"},
+    "red":    {"bg": "#FEE2E2", "border": "#DC2626", "badge_bg": "#DC2626", "badge_text": "미포착", "badge_color": "#FFFFFF"},
+}
+
+ACCENT = "#FF7A2F"
+SPACING = "10px"

@@ -1,5 +1,9 @@
 import json
 import streamlit.components.v1 as components
+import plotly.graph_objects as go
+from constants import PRICE_COLOR, THEME
+import streamlit as st
+
 
 def render_stock_chart(dates_korean, close_cleaned):
     max_idx = close_cleaned.idxmax()
@@ -18,10 +22,10 @@ def render_stock_chart(dates_korean, close_cleaned):
         <div id="stockChartWrap" style="position:relative; width:100%; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
           <div id="hoverInfo" style="position:absolute; top:0px; left:50%; transform:translateX(-50%);
                text-align:center; pointer-events:none; z-index:5; opacity:0; transition:opacity 0.1s;">
-            <div id="hoverDate" style="color:#9CA3AF; font-size:13px; margin-bottom:2px;"></div>
-            <div id="hoverPrice" style="color:#FFFFFF; font-size:28px; font-weight:700;"></div>
+            <div id="hoverDate" style="color:#6b7280; font-size:13px; margin-bottom:2px;"></div>
+            <div id="hoverPrice" style="color:#1a1d29; font-size:28px; font-weight:700;"></div>
           </div>
-          <svg id="stockSvg" width="100%" height="430" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet"
+          <svg id="stockSvg" width="100%" height="380" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet"
                style="display:block; cursor:crosshair;">
             <line id="spikeLine" x1="0" y1="0" x2="0" y2="430" stroke="rgba(255,255,255,0.35)"
                   stroke-width="1" style="display:none;" />
@@ -52,7 +56,7 @@ def render_stock_chart(dates_korean, close_cleaned):
             const minLabel = document.getElementById("minLabel");
  
             const W = 1000, H = 430;
-            const padTop = 60, padBottom = 30, padX = 70;
+            const padTop = 25, padBottom = 15, padX = 30;
  
             const prices = data.map(d => d.price);
             const minP = Math.min(...prices);
@@ -148,4 +152,29 @@ def render_stock_chart(dates_korean, close_cleaned):
         </script>
         """
     
-    components.html(chart_html, height=450)
+    components.html(chart_html, height=380)
+    
+def render_candle_chart(df, months=3):
+    display_df = df.tail(21 * months).reset_index(drop=True)
+    fig = go.Figure(data=[go.Candlestick(
+        x=display_df['Date'].dt.strftime('%m/%d'),
+        open=display_df['Open'], high=display_df['High'],
+        low=display_df['Low'], close=display_df['Close'],
+        increasing_line_color=PRICE_COLOR['up'], increasing_fillcolor=PRICE_COLOR['up'],
+        decreasing_line_color=PRICE_COLOR['down'], decreasing_fillcolor=PRICE_COLOR['down'],
+        hovertemplate="날짜 %{x}<br>시가 %{open:,.0f}원<br>고가 %{high:,.0f}원"
+                      "<br>저가 %{low:,.0f}원<br>종가 %{close:,.0f}원<extra></extra>",
+    )])
+    fig.update_layout(
+        height=420, margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        xaxis_rangeslider_visible=False,
+        font=dict(color=THEME['text_main']),
+        bargap=0.35,
+        xaxis=dict(
+            type='category', gridcolor=THEME['border'], tickfont=dict(size=10),
+            range=[-0.5, len(display_df) - 0.5],
+        ),
+        yaxis=dict(gridcolor=THEME['border']),
+    )
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})

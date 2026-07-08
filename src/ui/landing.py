@@ -5,13 +5,13 @@ def render_landing():
     st.markdown("""
     <div style="text-align:center; padding: 60px 20px 40px 20px;">
       <div style="font-size:56px; margin-bottom:16px;">🤖</div>
-      <h1 style="font-size:32px; font-weight:800; color:#f1f5f9; margin-bottom:8px;">
+      <h1 style="font-size:32px; font-weight:800; color:{THEME['text_main']}; margin-bottom:8px;">
         개미반대로
       </h1>
-      <p style="font-size:16px; color:#94a3b8; margin-bottom:4px;">
+      <p style="font-size:16px; color:{THEME['text_sub']}; margin-bottom:4px;">
         군중이 공포에 떨 때, 숫자는 기회를 말한다
       </p>
-      <p style="font-size:13px; color:#475569; margin-bottom:40px;">
+      <p style="font-size:13px; color:{THEME['text_sub']}; margin-bottom:40px;">
         네이버 실시간 주주 여론 × 보조지표 × 수급 데이터 통합 역발상 스캐너
       </p>
     </div>

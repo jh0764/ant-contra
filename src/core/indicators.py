@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 
-def calculate_objective_indicators(close_series, volume_series, foreign_data, news_data, is_kosdaq, high_series=None, low_series=None):
+def calculate_objective_indicators(close_series, volume_series, foreign_data, news_data, is_kosdaq,
+                                    high_series=None, low_series=None, rs_data=None):
     results = {}
     
     #RSI (14일)
@@ -266,7 +267,9 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
     except Exception:
         results["news_vacuum"] = {"status": "yellow", "label": "뉴스 지수 — 수집 불가", "desc": "잠시 후 재시도", "score": 0}
 
-    price_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["rsi", "bb", "w52", "ichimoku"])
+    if rs_data is not None:
+        results["rs"] = rs_data
+    price_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["rsi", "bb", "w52", "ichimoku", "rs"])
     supply_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["volume", "foreign", "obv", "pvd"])
     news_score = results.get("news_vacuum", {}).get("score", 0)
 

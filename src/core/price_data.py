@@ -76,4 +76,10 @@ def load_price_data(ticker_code: str):
         except Exception:
             pass
 
+# 첫 봉이 다음 봉 대비 상하한가(±30%) 초과 시 캐시 오염 의심 → 원본 반환하지 않고 결측 처리
+    if not result_data.empty and len(result_data) >= 2 and "Close" in result_data.columns:
+        c0, c1 = result_data["Close"].iloc[0], result_data["Close"].iloc[1]
+        if c1 > 0 and abs(c0 - c1) / c1 > 0.30:
+            result_data = result_data.iloc[1:]  # 의심 행만 제거, 나머지는 그대로 사용
+
     return result_data, result_suffix

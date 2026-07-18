@@ -1,3 +1,4 @@
+import pandas as pd
 from constants import fear_dictionary, greedy_dictionary
 #감성 사전
 def analyze_combined_sentiment(naver_posts, close_series=None, high_series=None, low_series=None):

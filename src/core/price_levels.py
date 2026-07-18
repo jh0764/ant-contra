@@ -1,6 +1,7 @@
 
 #개미환불선
-def calc_vwap_refund_line(df_raw):
+def calc_vwap_refund_line(df_raw, window=30):
+    df_raw = df_raw.tail(window)
     """
     30일 VWAP = Σ(전형가 × 거래량) / Σ(거래량)
     전형가(Typical Price) = (고가 + 저가 + 종가) / 3

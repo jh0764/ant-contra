@@ -1,10 +1,31 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import streamlit as st
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _fetch_frgn_rows(ticker_code):
+    url = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
+    hdrs = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+    }
+    resp = requests.get(url, headers=hdrs, timeout=6)
+    content = resp.content
+    html = content.decode("euc-kr", errors="replace") if b"euc-kr" in content[:500].lower() else content.decode("utf-8", errors="replace")
+    soup = BeautifulSoup(html, "html.parser")
+    rows = soup.select("table.type2 tr")
+    parsed = []
+    for row in rows:
+        tds = row.select("td")
+        if len(tds) < 8:
+            continue
+        parsed.append([td.get_text().strip() for td in tds])  # Tag → str 리스트로 변환
+    return parsed
 
 #네이버 종목토론방        
+@st.cache_data(ttl=300, show_spinner=False)
 def get_naver_discussion_by_likes(ticker_code):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -102,30 +123,15 @@ def get_naver_discussion_by_likes(ticker_code):
 
 
 def get_foreign_net_buying(ticker_code):
-    # ── 5. 외국인 순매수
     try:
-        url_f  = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
-        hdrs_f = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
-        }
-        resp_f = requests.get(url_f, headers=hdrs_f, timeout=6)
-        content = resp_f.content
-        html_f = content.decode("euc-kr", errors="replace") if b"euc-kr" in content[:500].lower() else content.decode("utf-8", errors="replace")
-        soup_f = BeautifulSoup(html_f, "html.parser")
-
-        rows_f = soup_f.select("table.type2 tr")
+        tds_rows = _fetch_frgn_rows(ticker_code)
         net_values = []
-        for row in rows_f:
-            tds = row.select("td")
-            if len(tds) < 8:          # 컬럼 8개 미만 행 스킵
-                continue
+        for tds in tds_rows:
             try:
-                val_text = tds[6].get_text().strip().replace(",", "").replace("+", "")
+                val_text = tds[6].replace(",", "").replace("+", "")
                 if not val_text or val_text == "-":
                     continue
-                val = int(val_text)
-                net_values.append(val)
+                net_values.append(int(val_text))
             except (ValueError, IndexError):
                 continue
             if len(net_values) >= 5:
@@ -137,22 +143,17 @@ def get_foreign_net_buying(ticker_code):
         consec_sell = sum(1 for v in net_values[:3] if v < 0)
         consec_buy  = sum(1 for v in net_values[:3] if v > 0)
         recent_sum  = sum(net_values[:3]) // 100
-
-        # 전환 감지: 직전 3일 매도 → 최근 1일 매수
         is_turning = (net_values[0] > 0 and net_values[1] < 0 and net_values[2] < 0)
         is_still_selling = consec_sell >= 3
 
         return {
-            "net_values": net_values,
-            "consec_sell": consec_sell,
-            "consec_buy": consec_buy,
-            "recent_sum": recent_sum,
-            "is_turning": is_turning,
-            "is_still_selling": is_still_selling,
+            "net_values": net_values, "consec_sell": consec_sell, "consec_buy": consec_buy,
+            "recent_sum": recent_sum, "is_turning": is_turning, "is_still_selling": is_still_selling,
         }
     except Exception as e:
         return {"error": str(e)}
         
+@st.cache_data(ttl=300, show_spinner=False)
 def get_news_vacuum(ticker_code):
     try:
         news_url = f"https://finance.naver.com/item/news_news.naver?code={ticker_code}&page=1"

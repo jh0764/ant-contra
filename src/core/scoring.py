@@ -1,26 +1,15 @@
 import requests
 from bs4 import BeautifulSoup
+import streamlit as st
+from core.naver_scraper import _fetch_frgn_rows
 
 def calculate_fomo_index(ticker_code):
     try:
-        url = f"https://finance.naver.com/item/frgn.naver?code={ticker_code}"
-        hdrs = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
-        }
-        resp = requests.get(url, headers=hdrs, timeout=6)
-        html = resp.content.decode("euc-kr", errors="replace") if b"euc-kr" in resp.content[:500].lower() else resp.content.decode("utf-8", errors="replace")
-        soup = BeautifulSoup(html, "html.parser")
-
-        # 개인 순매수 컬럼 (frgn 페이지 테이블: 날짜/외국인/기관/개인 순)
-        rows = soup.select("table.type2 tr")
+        tds_rows = _fetch_frgn_rows(ticker_code)
         indiv_values = []
-        for row in rows:
-            tds = row.select("td")
-            if len(tds) < 6:
-                continue
+        for tds in tds_rows:
             try:
-                val = int(tds[5].get_text().strip().replace(",","").replace("+",""))
+                val = int(tds[5].replace(",", "").replace("+", ""))
                 indiv_values.append(val)
             except Exception:
                 continue
@@ -120,7 +109,7 @@ def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
     return final_scream_score, scream_tier 
 
 
-def get_entry_signal(obj_indicators, final_scream_score):
+def get_entry_signal(obj_indicators, final_scream_score, risk_levels=None):
     foreign = obj_indicators.get("foreign", {})
     obv     = obj_indicators.get("obv",     {})
     pvd     = obj_indicators.get("pvd",     {})
@@ -133,11 +122,16 @@ def get_entry_signal(obj_indicators, final_scream_score):
     is_obv_bearish  = obv.get("status") == "red"
     is_panic_done   = pvd.get("score", 0) >= 12
     is_rsi_cold     = (rsi.get("value") or 50) <= 35
+    rr_poor         = risk_levels is not None and risk_levels["rr_ratio"] < 1.5 and risk_levels["rr_ratio"] > 0
 
-    if is_fear_zone and is_fg_turning and is_obv_bullish:
+    if is_fear_zone and is_fg_turning and is_obv_bullish and not rr_poor:
         return {"level": "🟢 진입 적극 고려", "color": "#22c55e",
-                "desc": "공포 + 외국인 전환 + OBV 매집 동시 포착. 최적 타점",
+                "desc": "공포 + 외국인 전환 + OBV 매집 + 손익비 양호. 최적 타점",
                 "action": "분할매수 1차 진입"}
+    elif is_fear_zone and is_fg_turning and is_obv_bullish and rr_poor:
+        return {"level": "🟡 조건부 진입", "color": "#eab308",
+                "desc": "수급 신호는 양호하나 손익비 미흡 — 목표가 대비 리스크 과다",
+                "action": "손절가 재점검 후 소량 진입"}
     elif is_fear_zone and (is_fg_turning or is_obv_bullish) and is_panic_done:
         return {"level": "🟡 조건부 진입", "color": "#eab308",
                 "desc": "공포 + 수급 일부 전환. 나머지 신호 대기하며 소량 선진입",
@@ -154,7 +148,3 @@ def get_entry_signal(obj_indicators, final_scream_score):
         return {"level": "🟡 대기", "color": "#ca8a04",
                 "desc": "공포 감지. 수급 전환 신호 미확인",
                 "action": "알림 설정 후 대기"}
-
-
-
-

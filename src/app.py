@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import yfinance as yf
 
 from core.krx_listing import load_krx_listing, search_companies
 from core.price_data import load_price_data
@@ -10,13 +11,18 @@ from core.indicators import calculate_objective_indicators
 from core.scoring import calculate_fomo_index, calculate_final_score, get_entry_signal
 from core.price_levels import calc_vwap_refund_line, calc_fibonacci_nearest
 from core.fundamentals import get_fundamental_data
+from core.market_index import get_market_index_series, calculate_rs_indicator
+from core.risk_levels import calculate_risk_levels
+from core.scanner import run_fear_scanner
 
+from ui.scanner_panel import render_fear_scanner
 from ui.landing import render_landing
 from ui.chart import render_stock_chart, render_candle_chart 
 from ui.main_panel import render_price_info, render_community_tab, render_fundamental_stats
 from ui.sidebar_cards import (
     render_entry_card, render_gauge_and_tier, render_score_metrics,
-    render_signal_summary, render_fomo_panel, render_indicator_group
+    render_signal_summary, render_fomo_panel, render_indicator_group, 
+    render_risk_card
 )
 from ui.ticker_badge import render_company_header
 
@@ -45,6 +51,105 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 div[data-baseweb="tab-highlight"] {{ display:none; }}
 div[data-baseweb="tab-border"] {{ display:none; }}
 """, unsafe_allow_html=True)
+
+st.markdown(f"""
+<style>
+div[data-testid="stWidgetLabel"] {{
+    display: none !important;
+}}
+div[data-testid="stRadio"] {{
+    margin: 2px 0 2px 0 !important;
+    padding: 0 !important;
+}}
+div[data-testid="stRadio"] > div[role="radiogroup"] {{
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    margin: 0 !important; padding: 0 !important;
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"] {{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    margin: 0 !important;
+    border: 1px solid #2b2b2b !important;
+    border-radius: 999px !important;
+    padding: 7px 18px !important;
+    min-height: 0 !important;
+    background: #2b2b2b !important;
+    cursor: pointer;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background-color 0.25s ease,
+                border-color 0.25s ease;
+}}
+/* label 바로 아래 모든 div 껍데기를 렌더링 트리에서 제거 → p가 label의 직계 flex 자식이 됨 */
+div[data-testid="stRadio"] label[data-baseweb="radio"] > div {{
+    display: contents !important;
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"] > div:not(:has(p)) {{
+    display: none !important;
+}}
+/* 네이티브 radio input은 완전히 숨김 (레이아웃에서 제외) */
+div[data-testid="stRadio"] label[data-baseweb="radio"] input[type="radio"] {{
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important; height: 0 !important;
+    margin: 0 !important; padding: 0 !important;
+    pointer-events: none !important;
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"] p {{
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12.5px !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+    color: #9ca3af !important;
+    white-space: nowrap;
+    transition: color 0.25s ease;
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) {{
+    background: {ACCENT} !important;
+    border-color: {ACCENT} !important;
+    transform: scale(1.06);
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"]:not(:has(input:checked)) {{
+    border-color: {ACCENT}55 !important;
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p {{
+    color: #1a1a1a !important;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""
+<style>
+div.st-key-candle_period_wrap div[data-testid="stHorizontalBlock"] {{
+    gap: 6px !important;
+}}
+div.st-key-candle_period_wrap button {{
+    border-radius: 8px !important;
+    padding: 4px 0 !important;
+    min-height: 30px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}}
+div.st-key-candle_period_wrap button[kind="secondary"] {{
+    background: transparent !important;
+    border: 1px solid {THEME['border']} !important;
+    color: {THEME['text_sub']} !important;
+}}
+div.st-key-candle_period_wrap button[kind="primary"] {{
+    background: transparent !important;
+    border: 1px solid {ACCENT} !important;
+    color: {ACCENT} !important;
+    box-shadow: none !important;
+}}
+</style>
+""", unsafe_allow_html=True)
+
 st.markdown(f"""
 <div style="font-size:22px; font-weight:800; color:{THEME['text_main']};">개미반대로</div>
 <div style="font-size:12.5px; color:{THEME['text_sub']}; margin-bottom:16px;">네이버 실시간 추천 인기글 기반 역발상 스캐너</div>
@@ -85,6 +190,9 @@ elif st.session_state.get("dashboard_ready"):
     selected_item = st.session_state["last_selected"]
 else:
     render_landing()
+    with st.spinner("공포 스캐너 실행 중..."):
+        scan_results = run_fear_scanner(top_n=10)
+    render_fear_scanner(scan_results, KRX_LISTING)
     st.stop()
 
 selected_company = selected_item.split(" (")[0]
@@ -125,14 +233,17 @@ try:
 
     foreign_data = get_foreign_net_buying(ticker_input)
     news_data = get_news_vacuum(ticker_input)
+    index_series = get_market_index_series(is_kosdaq)
+    rs_data = calculate_rs_indicator(close_cleaned, index_series)
     obj_indicators, objective_score = calculate_objective_indicators(
-    close_cleaned, volume_series, foreign_data, news_data, is_kosdaq, high_cleaned, low_cleaned
-)
+        close_cleaned, volume_series, foreign_data, news_data, is_kosdaq, high_cleaned, low_cleaned, rs_data
+    )
     fomo_data = calculate_fomo_index(ticker_input)
     final_scream_score, scream_tier = calculate_final_score(
         obj_indicators, community_raw, is_kosdaq, fomo_data["score"]
     )
-    entry = get_entry_signal(obj_indicators, final_scream_score)
+    risk_levels = calculate_risk_levels(close_cleaned, high_cleaned, low_cleaned, current_price)
+    entry = get_entry_signal(obj_indicators, final_scream_score, risk_levels)
         # 가격 기반 / 수급 기반 그룹 헤더로 구분
     price_keys = [
         ("rsi",      "📈 RSI (14일)"),
@@ -140,6 +251,7 @@ try:
         ("w52",      "📉 52주 신저가"),
         ("drawdown", "📉 고점 대비 낙폭"),  # 신규
         ("ichimoku", "☁️ 일목균형표"),
+        ("rs",       "🏁 시장대비 상대강도"),
         ]
     supply_keys = [
         ("volume",      "🔊 거래량 폭발"),
@@ -152,27 +264,30 @@ try:
 
     with col_main:
         render_company_header(selected_company, ticker_input, sector)
-        tab_line, tab_candle = st.tabs(["라인", "캔들"])
-        with tab_line:
+        chart_mode = st.radio("차트 보기", ["라인", "캔들"], horizontal=True,
+                               label_visibility="collapsed", key="chart_mode_toggle")
+        if chart_mode == "라인":
             with st.container(border=True):
                 render_stock_chart(dates_korean, close_cleaned)
-        with tab_candle:
-            with st.container(border=True):
-                render_candle_chart(df, months=2)
+        else:
+            render_candle_chart(df)
 
         ant_refund_line = calc_vwap_refund_line(df)
         fib = calc_fibonacci_nearest(close_cleaned)
         render_price_info(current_price, change_pct, ant_refund_line, fib, volatility_warning)
-        render_fundamental_stats(fundamentals) 
+        render_fundamental_stats(fundamentals)
+        st.markdown(f"<hr style='border:none; border-top:1px solid {THEME['border']}; margin:14px 0 12px 0;'>", unsafe_allow_html=True)
 
-        tab_price, tab_supply = st.tabs(["가격 기반", "수급 기반"])
-    with tab_price:
-        render_indicator_group(price_keys, obj_indicators)
-    with tab_supply:
-        render_indicator_group(supply_keys, obj_indicators)
+        indicator_mode = st.radio("지표 보기", ["가격 기반", "수급 기반"], horizontal=True,
+                                   label_visibility="collapsed", key="indicator_mode_toggle")
+        if indicator_mode == "가격 기반":
+            render_indicator_group(price_keys, obj_indicators)
+        else:
+            render_indicator_group(supply_keys, obj_indicators)
 
     with col_side:
         render_entry_card(entry)
+        render_risk_card(risk_levels)
         render_gauge_and_tier(final_scream_score, scream_tier)
         render_score_metrics(community_raw, objective_score)
         render_signal_summary(obj_indicators)

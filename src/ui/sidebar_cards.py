@@ -2,6 +2,7 @@ import streamlit as st
 from constants import STATUS_STYLE, THEME
 from ui.common import html_block
 from ui.gauge import render_wave_gauge
+from constants import STATUS_STYLE, THEME, PRICE_COLOR
 
 def render_entry_card(entry):
     html_block(
@@ -106,3 +107,28 @@ def render_indicator_group(keys, obj_indicators, group_label=None):
             </div>""",
             unsafe_allow_html=True
         )
+
+def render_risk_card(risk_levels):
+    if not risk_levels:
+        return
+    stop_color = PRICE_COLOR['down']    # 파란색
+    target_color = PRICE_COLOR['up']    # 빨간색
+    verdict_color = {"우수": target_color, "양호": target_color, "미흡": stop_color, "산출불가": THEME['text_sub']}
+    v_color = verdict_color.get(risk_levels["rr_verdict"], THEME['text_sub'])
+    html_block(f"""
+<div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:10px; padding:12px 14px; margin:0 0 12px 0;">
+<div style="font-size:12px; font-weight:700; color:{THEME['text_main']}; margin-bottom:8px;">손익비 타점 (R:R)</div>
+<div style="display:flex; justify-content:space-between; font-size:11.5px; color:{THEME['text_sub']}; margin-bottom:3px;">
+<span>손절가</span><span style="color:{stop_color}; font-weight:700;">{risk_levels['stop_loss']:,}원 (-{risk_levels['risk_pct']}%)</span>
+</div>
+<div style="display:flex; justify-content:space-between; font-size:11.5px; color:{THEME['text_sub']}; margin-bottom:3px;">
+<span>1차 목표가</span><span style="color:{target_color}; font-weight:700;">{risk_levels['target1']:,}원 (+{risk_levels['reward_pct']}%)</span>
+</div>
+<div style="display:flex; justify-content:space-between; font-size:11.5px; color:{THEME['text_sub']}; margin-bottom:6px;">
+<span>2차 목표가</span><span style="color:{THEME['text_main']};">{risk_levels['target2']:,}원</span>
+</div>
+<div style="background:{v_color}18; border-radius:6px; padding:5px 10px; text-align:center;">
+<span style="color:{v_color}; font-weight:700; font-size:12px;">R:R {risk_levels['rr_ratio']} — {risk_levels['rr_verdict']}</span>
+</div>
+</div>
+""")

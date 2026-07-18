@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
+import streamlit as st
 
+@st.cache_data(ttl=600, show_spinner=False)
 def get_fundamental_data(ticker_code):
     try:
         url = f"https://finance.naver.com/item/main.naver?code={ticker_code}"

@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from constants import PRICE_COLOR, THEME, ACCENT
 import streamlit as st
 from ui.common import html_block
+import pandas as pd
 
 
 def render_stock_chart(dates_korean, close_cleaned):
@@ -255,10 +256,6 @@ def render_candle_chart(df, key_prefix="candle"):
     selected_bars = period_map[st.session_state[state_key]]
     start_idx = max(0, n - selected_bars)
 
-    step = max(1, n // 8)
-    tickvals = list(range(0, n, step))
-    ticktext = [x_labels.iloc[i] for i in tickvals]
-
     ma20 = display_df['Close'].rolling(20).mean()
     std20 = display_df['Close'].rolling(20).std()
     bb_upper = ma20 + 2 * std20
@@ -266,6 +263,8 @@ def render_candle_chart(df, key_prefix="candle"):
 
     typical = (display_df['High'] + display_df['Low'] + display_df['Close']) / 3
     vwap20 = (typical * display_df['Volume']).rolling(20).sum() / display_df['Volume'].rolling(20).sum()
+
+
 
     conv = (display_df['High'].rolling(9).max() + display_df['Low'].rolling(9).min()) / 2
     base = (display_df['High'].rolling(26).max() + display_df['Low'].rolling(26).min()) / 2
@@ -294,7 +293,7 @@ def render_candle_chart(df, key_prefix="candle"):
     fig = go.Figure()
 
     fig.add_trace(go.Candlestick(
-        x=x_labels,
+        x=display_df['Date'],
         open=display_df['Open'], high=display_df['High'],
         low=display_df['Low'], close=display_df['Close'],
         increasing_line_color=PRICE_COLOR['up'], increasing_fillcolor=PRICE_COLOR['up'],
@@ -307,13 +306,13 @@ def render_candle_chart(df, key_prefix="candle"):
         ),
         name="", showlegend=False,
     ))
-    fig.add_trace(go.Scatter(x=x_labels, y=bb_upper, mode="lines", line=dict(color="#94a3b8", width=1, dash="dot"), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=x_labels, y=bb_lower, mode="lines", line=dict(color="#94a3b8", width=1, dash="dot"), fill="tonexty", fillcolor="rgba(148,163,184,0.08)", hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=x_labels, y=vwap20, mode="lines", line=dict(color="#FF7A2F", width=1.4), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=x_labels, y=cloud_bull_a, mode="lines", line=dict(color="rgba(240,68,82,0.35)", width=0.8), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=x_labels, y=cloud_bull_b, mode="lines", line=dict(color="rgba(240,68,82,0.35)", width=0.8), fill="tonexty", fillcolor="rgba(240,68,82,0.12)", hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=x_labels, y=cloud_bear_a, mode="lines", line=dict(color="rgba(49,130,246,0.35)", width=0.8), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=x_labels, y=cloud_bear_b, mode="lines", line=dict(color="rgba(49,130,246,0.35)", width=0.8), fill="tonexty", fillcolor="rgba(148,163,184,0.10)", hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=bb_upper, mode="lines", line=dict(color="#94a3b8", width=1, dash="dot"), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=bb_lower, mode="lines", line=dict(color="#94a3b8", width=1, dash="dot"), fill="tonexty", fillcolor="rgba(148,163,184,0.08)", hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=vwap20, mode="lines", line=dict(color="#FF7A2F", width=1.4), name="VWAP", hovertemplate="%{x}<br>VWAP %{y:,.0f}원<extra></extra>", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bull_a, mode="lines", line=dict(color="rgba(240,68,82,0.35)", width=0.8), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bull_b, mode="lines", line=dict(color="rgba(240,68,82,0.35)", width=0.8), fill="tonexty", fillcolor="rgba(240,68,82,0.12)", hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bear_a, mode="lines", line=dict(color="rgba(49,130,246,0.35)", width=0.8), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bear_b, mode="lines", line=dict(color="rgba(49,130,246,0.35)", width=0.8), fill="tonexty", fillcolor="rgba(148,163,184,0.10)", hoverinfo="skip", showlegend=False))
 
     y_min = float(display_df['Low'].iloc[start_idx:].min())
     y_max = float(display_df['High'].iloc[start_idx:].max())
@@ -326,13 +325,13 @@ def render_candle_chart(df, key_prefix="candle"):
         showlegend=False,
         font=dict(color=THEME['text_main'], size=11),
         bargap=0.45,
-        hovermode="closest",
+        hovermode="x unified",
         hoverlabel=dict(bgcolor=THEME['surface'], bordercolor=THEME['border'], font=dict(color=THEME['text_main'])),
         xaxis=dict(
-            type='category',
-            tickmode='array', tickvals=tickvals, ticktext=ticktext,
+            type='date',
+            tickformat='%m/%d',
             showgrid=False, tickfont=dict(size=10.5),
-            range=[start_idx - 0.5, n + 1.5],
+            range=[display_df['Date'].iloc[start_idx], display_df['Date'].iloc[-1]],
         ),
         yaxis=dict(
             gridcolor=THEME['border'], gridwidth=1,

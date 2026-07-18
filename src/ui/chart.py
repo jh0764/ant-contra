@@ -5,6 +5,7 @@ from constants import PRICE_COLOR, THEME, ACCENT
 import streamlit as st
 from ui.common import html_block
 import pandas as pd
+from urllib.parse import quote
 
 
 def render_stock_chart(dates_korean, close_cleaned):
@@ -162,98 +163,50 @@ def render_candle_chart(df, key_prefix="candle"):
     n = len(display_df)
 
     period_map = {"1개월": 21, "3개월": 63, "6개월": 126, "전체": n}
-    state_key = f"{key_prefix}_period"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = "3개월"
-
     period_labels = list(period_map.keys())
-    state_key = f"{key_prefix}_period"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = period_labels[1]  # 기본 3개월
 
-    glider_rules = "\n".join([
-        f'div.st-key-{key_prefix}_period_wrap div[role="radiogroup"]:has(label:nth-of-type({i+1}) input:checked)::before {{ transform: translateX({i*100}%); }}'
-        for i in range(len(period_labels))
-    ])
+    qp_key = f"{key_prefix}_p"
+    current = st.query_params.get(qp_key, "3개월")
+    if current not in period_map:
+        current = "3개월"
 
-    st.markdown(f"""
+    stock_qp = quote(st.query_params.get("stock", ""), safe="")
+    btns = "".join(
+        f'<a href="?stock={stock_qp}&tab=candle&{qp_key}={quote(l, safe="")}" '
+        f'class="pbtn {"on" if l==current else ""}">{l}</a>'
+        for l in period_labels
+    )
+
+    html_block(f"""
+    <div style="display:flex; align-items:center; justify-content:space-between; margin:4px 0 8px 0; flex-wrap:wrap; gap:8px;">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
+          <span style="width:14px; height:8px; background:rgba(240,68,82,0.25); border-radius:2px;"></span>일목구름대
+        </span>
+        <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
+          <span style="width:14px; height:2px; background:#FF7A2F;"></span>VWAP(20)
+        </span>
+        <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
+          <span style="width:14px; height:0; border-top:1.5px dashed #94a3b8;"></span>볼린저 밴드
+        </span>
+      </div>
+      <div style="display:flex; gap:2px; background:{THEME['border']}55; padding:2px; border-radius:7px;">
+        {btns}
+      </div>
+    </div>
     <style>
-    div.st-key-{key_prefix}_period_wrap {{ margin-bottom: 10px; }}
-    div.st-key-{key_prefix}_period_wrap div[data-testid="stWidgetLabel"] {{ display: none !important; }}
-
-    /* 전역 알약 토글(라인/캔들) CSS를 이 컨테이너 안에서만 무효화 */
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"] {{
-        background: transparent !important;
-        border: none !important;
-        border-radius: 0 !important;
-        transform: none !important;
-        box-shadow: none !important;
+    .pbtn {{
+      padding:2px 9px; font-size:9.5px; font-weight:600;
+      border-radius:5px; color:{THEME['text_sub']};
+      text-decoration:none; white-space:nowrap;
     }}
-
-    div.st-key-{key_prefix}_period_wrap div[role="radiogroup"] {{
-        position: relative;
-        display: flex !important;
-        flex-direction: row !important;
-        width: fit-content;
-        border: 1px solid {THEME['border']};
-        border-radius: 8px;
-        overflow: hidden;
-        background: {THEME['surface']};
-    }}
-    div.st-key-{key_prefix}_period_wrap div[role="radiogroup"]::before {{
-        content: "";
-        position: absolute;
-        top: 0; left: 0;
-        width: {100/len(period_labels):.4f}%;
-        height: 100%;
-        background: {ACCENT};
-        border-radius: 6px;
-        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-        z-index: 0;
-    }}
-    {glider_rules}
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"] {{
-        position: relative;
-        z-index: 1;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        margin: 0 !important;
-        padding: 6px 16px !important;
-        min-height: 0 !important;
-        border-right: 1px solid {THEME['border']} !important;
-        cursor: pointer;
-    }}
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"]:last-of-type {{
-        border-right: none !important;
-    }}
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"] > div:not(:has(p)) {{
-        display: none !important;
-    }}
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"] input[type="radio"] {{
-        position: absolute !important;
-        opacity: 0 !important;
-        width: 0 !important; height: 0 !important;
-    }}
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"] p {{
-        margin: 0 !important;
-        font-size: 11.5px !important;
-        font-weight: 600 !important;
-        white-space: nowrap !important;
-        color: {THEME['text_sub']};
-        transition: color 0.25s ease;
-    }}
-    div.st-key-{key_prefix}_period_wrap label[data-baseweb="radio"]:has(input:checked) p {{
-        color: #ffffff !important;
-    }}
+    .pbtn.on {{ background:{THEME['surface']}; color:{THEME['text_main']}; box-shadow:0 1px 2px rgba(0,0,0,0.15); }}
+    .pbtn:visited {{ color:{THEME['text_sub']}; }}
+    .pbtn.on:visited {{ color:{THEME['text_main']}; }}
     </style>
-    """, unsafe_allow_html=True)
+    """)
 
-    with st.container(key=f"{key_prefix}_period_wrap"):
-        st.radio("기간", period_labels, horizontal=True,
-                 label_visibility="collapsed", key=state_key)
-
-    selected_bars = period_map[st.session_state[state_key]]
+    selected_bars = period_map[current]
     start_idx = max(0, n - selected_bars)
 
     ma20 = display_df['Close'].rolling(20).mean()
@@ -264,8 +217,6 @@ def render_candle_chart(df, key_prefix="candle"):
     typical = (display_df['High'] + display_df['Low'] + display_df['Close']) / 3
     vwap20 = (typical * display_df['Volume']).rolling(20).sum() / display_df['Volume'].rolling(20).sum()
 
-
-
     conv = (display_df['High'].rolling(9).max() + display_df['Low'].rolling(9).min()) / 2
     base = (display_df['High'].rolling(26).max() + display_df['Low'].rolling(26).min()) / 2
     span_a = ((conv + base) / 2).shift(26)
@@ -275,20 +226,7 @@ def render_candle_chart(df, key_prefix="candle"):
     cloud_bear_a = span_a.where(span_a < span_b)
     cloud_bear_b = span_b.where(span_a < span_b)
 
-    # 범례를 Plotly 밖 HTML로 직접 렌더 (paper 좌표계 오프셋 문제 원천 차단)
-    html_block(f"""
-<div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin:2px 0 6px 2px;">
-  <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
-    <span style="width:14px; height:8px; background:rgba(240,68,82,0.25); display:inline-block; border-radius:2px;"></span>일목구름대
-  </span>
-  <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
-    <span style="width:14px; height:2px; background:#FF7A2F; display:inline-block;"></span>VWAP(20)
-  </span>
-  <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
-    <span style="width:14px; height:0; border-top:1.5px dashed #94a3b8; display:inline-block;"></span>볼린저 밴드
-  </span>
-</div>
-""")
+
 
     fig = go.Figure()
 

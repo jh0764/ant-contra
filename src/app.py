@@ -24,6 +24,11 @@ from ui.sidebar_cards import (
     render_signal_summary, render_fomo_panel, render_indicator_group, 
     render_risk_card
 )
+from ui.sidebar_cards import (
+    render_entry_card, render_gauge_and_tier, render_score_metrics,
+    render_signal_summary, render_fomo_panel, render_indicator_group, 
+    render_risk_card
+)
 from ui.ticker_badge import render_company_header
 
 from constants import THEME, ACCENT
@@ -41,9 +46,10 @@ div[data-baseweb="tab-list"] {{
     width:fit-content; margin-bottom:10px;
 }}
 button[data-baseweb="tab"] {{
-    border-radius:9px; padding:8px 18px; color:{THEME['text_sub']};
+    border-radius:9px; padding:6px 14px; color:{THEME['text_sub']};
     font-weight:600; font-size:13.5px; transition:0.15s;
 }}
+div[data-baseweb="tab-panel"] {{ padding-top: 2px !important; }}
 button[data-baseweb="tab"][aria-selected="true"] {{
     background:{THEME['surface']}; color:{ACCENT};
     box-shadow:0 1px 3px rgba(0,0,0,0.12);
@@ -188,12 +194,18 @@ if selected_item and "(" in selected_item:
     st.session_state["dashboard_ready"] = True
 elif st.session_state.get("dashboard_ready"):
     selected_item = st.session_state["last_selected"]
+elif "stock" in st.query_params:
+    selected_item = st.query_params["stock"]
+    st.session_state["last_selected"] = selected_item
+    st.session_state["dashboard_ready"] = True
 else:
     render_landing()
     with st.spinner("공포 스캐너 실행 중..."):
         scan_results = run_fear_scanner(top_n=10)
     render_fear_scanner(scan_results, KRX_LISTING)
     st.stop()
+
+st.query_params["stock"] = selected_item
 
 selected_company = selected_item.split(" (")[0]
 ticker_input = selected_item.split(" (")[1].replace(")", "").strip()

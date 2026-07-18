@@ -5,22 +5,22 @@ from constants import PRICE_COLOR, THEME, ACCENT
 import streamlit as st
 from ui.common import html_block
 import pandas as pd
-from urllib.parse import quote
+from ui.common import html_block, render_tab_group, render_flex_row
 
 
 def render_stock_chart(dates_korean, close_cleaned):
     max_idx = close_cleaned.idxmax()
     min_idx = close_cleaned.idxmin()
-    
+
     chart_points = [
             {"date": str(d), "price": int(p)}
             for d, p in zip(dates_korean.tolist(), close_cleaned.tolist())
         ]
-    
+
     chart_data_json = json.dumps(chart_points, ensure_ascii=False)
     max_point_idx = int(close_cleaned.reset_index(drop=True).idxmax())
     min_point_idx = int(close_cleaned.reset_index(drop=True).idxmin())
-    
+
     chart_html = f"""
         <div id="stockChartWrap" style="position:relative; width:100%; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
           <div id="hoverInfo" style="position:absolute; top:0px; left:50%; transform:translateX(-50%);
@@ -30,14 +30,22 @@ def render_stock_chart(dates_korean, close_cleaned):
           </div>
           <svg id="stockSvg" width="100%" height="400" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMid meet"
                style="display:block; cursor:crosshair;">
-            <line id="spikeLine" x1="0" y1="0" x2="0" y2="430" stroke="rgba(255,255,255,0.35)"
+            <defs>
+              <linearGradient id="lineFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#FF4B4B" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#FF4B4B" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <g id="gridLines"></g>
+            <line id="spikeLine" x1="0" y1="0" x2="0" y2="400" stroke="rgba(148,163,184,0.35)"
                   stroke-width="1" style="display:none;" />
-            <path id="priceLine" fill="none" stroke="#FF4B4B" stroke-width="2.5" />
+            <path id="areaFill" fill="url(#lineFillGrad)" stroke="none" />
+            <path id="priceLine" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linejoin="round" />
             <circle id="hoverDot" r="5" fill="#FF4B4B" stroke="white" stroke-width="1.5" style="display:none;" />
             <circle id="maxDot" r="4.5" fill="#FF4B4B" stroke="white" stroke-width="1.5" />
             <circle id="minDot" r="4.5" fill="#FF4B4B" stroke="white" stroke-width="1.5" />
-            <text id="maxLabel" fill="#FF6B6B" font-size="14" text-anchor="middle"></text>
-            <text id="minLabel" fill="#FF6B6B" font-size="14" text-anchor="middle"></text>
+            <text id="maxLabel" fill="#FF6B6B" font-size="13" font-weight="600" text-anchor="middle"></text>
+            <text id="minLabel" fill="#FF6B6B" font-size="13" font-weight="600" text-anchor="middle"></text>
           </svg>
         </div>
         <script>
@@ -45,9 +53,11 @@ def render_stock_chart(dates_korean, close_cleaned):
             const data = {chart_data_json};
             const maxIdx = {max_point_idx};
             const minIdx = {min_point_idx};
- 
+
             const svg = document.getElementById("stockSvg");
+            const gridLines = document.getElementById("gridLines");
             const pathEl = document.getElementById("priceLine");
+            const areaEl = document.getElementById("areaFill");
             const spikeLine = document.getElementById("spikeLine");
             const hoverDot = document.getElementById("hoverDot");
             const hoverInfo = document.getElementById("hoverInfo");
@@ -57,15 +67,15 @@ def render_stock_chart(dates_korean, close_cleaned):
             const minDot = document.getElementById("minDot");
             const maxLabel = document.getElementById("maxLabel");
             const minLabel = document.getElementById("minLabel");
- 
+
             const W = 1000, H = 400;
-            const padTop = 15, padBottom = 10, padX = 15;
- 
+            const padTop = 30, padBottom = 30, padX = 60;
+
             const prices = data.map(d => d.price);
             const minP = Math.min(...prices);
             const maxP = Math.max(...prices);
             const range = (maxP - minP) || 1;
- 
+
             function xPos(i) {{
                 if (data.length === 1) return W / 2;
                 return padX + (i / (data.length - 1)) * (W - padX * 2);
@@ -74,14 +84,37 @@ def render_stock_chart(dates_korean, close_cleaned):
                 const usableH = H - padTop - padBottom;
                 return padTop + (1 - (price - minP) / range) * usableH;
             }}
- 
- 
-            // 점이 차트 좌/우 가장자리 근처에 있으면 텍스트가 viewBox 밖으로 잘리므로
-            // text-anchor를 동적으로 바꿔서 항상 차트 안쪽으로 텍스트가 뻗어나가도록 처리
+
             function anchorFor(x) {{
-                if (x < padX + 40) return "start";   // 왼쪽 가장자리 → 점 기준 오른쪽으로 텍스트
-                if (x > W - padX - 40) return "end";  // 오른쪽 가장자리 → 점 기준 왼쪽으로 텍스트
+                if (x < padX + 40) return "start";
+                if (x > W - padX - 40) return "end";
                 return "middle";
+            }}
+
+            function drawGrid() {{
+                gridLines.innerHTML = "";
+                const steps = 4;
+                for (let i = 0; i <= steps; i++) {{
+                    const price = minP + (range * i / steps);
+                    const y = yPos(price);
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", padX);
+                    line.setAttribute("x2", W - 10);
+                    line.setAttribute("y1", y.toFixed(2));
+                    line.setAttribute("y2", y.toFixed(2));
+                    line.setAttribute("stroke", "rgba(148,163,184,0.18)");
+                    line.setAttribute("stroke-width", "1");
+                    gridLines.appendChild(line);
+
+                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    label.setAttribute("x", padX - 10);
+                    label.setAttribute("y", (y + 4).toFixed(2));
+                    label.setAttribute("text-anchor", "end");
+                    label.setAttribute("font-size", "11");
+                    label.setAttribute("fill", "#94a3b8");
+                    label.textContent = Math.round(price).toLocaleString() + "원";
+                    gridLines.appendChild(label);
+                }}
             }}
 
             function redraw() {{
@@ -92,25 +125,33 @@ def render_stock_chart(dates_korean, close_cleaned):
                 }});
                 pathEl.setAttribute("d", pathD);
 
+                const bottomY = H - padBottom;
+                const areaD = pathD + `L ${{xPos(data.length - 1).toFixed(2)}},${{bottomY}} L ${{xPos(0).toFixed(2)}},${{bottomY}} Z`;
+                areaEl.setAttribute("d", areaD);
+
                 const maxX = xPos(maxIdx), maxY = yPos(data[maxIdx].price);
                 const minX = xPos(minIdx), minY = yPos(data[minIdx].price);
                 maxDot.setAttribute("cx", maxX); maxDot.setAttribute("cy", maxY);
                 minDot.setAttribute("cx", minX); minDot.setAttribute("cy", minY);
 
+                const labelsClose = Math.abs(maxY - minY) < 30 && Math.abs(maxX - minX) < 120;
+
                 maxLabel.setAttribute("x", maxX);
-                maxLabel.setAttribute("y", Math.max(16, maxY - 16));
+                maxLabel.setAttribute("y", Math.max(16, maxY - 14));
                 maxLabel.setAttribute("text-anchor", anchorFor(maxX));
                 maxLabel.textContent = "최고 " + data[maxIdx].price.toLocaleString() + "원";
 
                 minLabel.setAttribute("x", minX);
-                minLabel.setAttribute("y", Math.min(H - 6, minY + 24));
+                minLabel.setAttribute("y", labelsClose ? Math.min(H - padBottom - 6, minY + 34) : Math.min(H - padBottom - 6, minY + 20));
                 minLabel.setAttribute("text-anchor", anchorFor(minX));
                 minLabel.textContent = "최저 " + data[minIdx].price.toLocaleString() + "원";
+
+                drawGrid();
             }}
 
             redraw();
             window.addEventListener("resize", redraw);
- 
+
             function findNearestIndex(mouseX) {{
                 let nearest = 0, minDist = Infinity;
                 data.forEach((d, i) => {{
@@ -119,7 +160,7 @@ def render_stock_chart(dates_korean, close_cleaned):
                 }});
                 return nearest;
             }}
- 
+
             function handleMove(evt) {{
                 const rect = svg.getBoundingClientRect();
                 const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
@@ -127,26 +168,26 @@ def render_stock_chart(dates_korean, close_cleaned):
                 const idx = findNearestIndex(relX);
                 const point = data[idx];
                 const px = xPos(idx), py = yPos(point.price);
- 
+
                 spikeLine.setAttribute("x1", px);
                 spikeLine.setAttribute("x2", px);
                 spikeLine.style.display = "block";
- 
+
                 hoverDot.setAttribute("cx", px);
                 hoverDot.setAttribute("cy", py);
                 hoverDot.style.display = "block";
- 
+
                 hoverDate.textContent = point.date;
                 hoverPrice.textContent = point.price.toLocaleString() + "원";
                 hoverInfo.style.opacity = "1";
             }}
- 
+
             function handleLeave() {{
                 spikeLine.style.display = "none";
                 hoverDot.style.display = "none";
                 hoverInfo.style.opacity = "0";
             }}
- 
+
             svg.addEventListener("mousemove", handleMove);
             svg.addEventListener("mouseleave", handleLeave);
             svg.addEventListener("touchmove", handleMove, {{passive: true}});
@@ -154,59 +195,35 @@ def render_stock_chart(dates_korean, close_cleaned):
         }})();
         </script>
         """
-    
+
     components.html(chart_html, height=400)
     
 def render_candle_chart(df, key_prefix="candle"):
     display_df = df.reset_index(drop=True)
-    x_labels = display_df['Date'].dt.strftime('%m/%d')
     n = len(display_df)
 
     period_map = {"1개월": 21, "3개월": 63, "6개월": 126, "전체": n}
     period_labels = list(period_map.keys())
 
-    qp_key = f"{key_prefix}_p"
-    current = st.query_params.get(qp_key, "3개월")
-    if current not in period_map:
-        current = "3개월"
+    with render_flex_row(f"{key_prefix}_row", margin_bottom="4px"):
+        html_block(f"""
+        <div style="display:flex; gap:12px; align-items:center;">
+          <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
+            <span style="width:14px; height:8px; background:rgba(240,68,82,0.25); border-radius:2px;"></span>일목구름대
+          </span>
+          <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
+            <span style="width:14px; height:2px; background:#FF7A2F;"></span>VWAP(20)
+          </span>
+          <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
+            <span style="width:14px; height:0; border-top:1.5px dashed #94a3b8;"></span>볼린저 밴드
+          </span>
+        </div>
+        """)
+        current = render_tab_group(period_labels, key=f"{key_prefix}_period_sel",
+                                    default_index=1, size="sm", selected_color=THEME['text_main'],
+                                    margin_bottom="-8px")
 
-    stock_qp = quote(st.query_params.get("stock", ""), safe="")
-    btns = "".join(
-        f'<a href="?stock={stock_qp}&tab=candle&{qp_key}={quote(l, safe="")}" '
-        f'class="pbtn {"on" if l==current else ""}">{l}</a>'
-        for l in period_labels
-    )
-
-    html_block(f"""
-    <div style="display:flex; align-items:center; justify-content:space-between; margin:4px 0 8px 0; flex-wrap:wrap; gap:8px;">
-      <div style="display:flex; gap:12px; align-items:center;">
-        <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
-          <span style="width:14px; height:8px; background:rgba(240,68,82,0.25); border-radius:2px;"></span>일목구름대
-        </span>
-        <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
-          <span style="width:14px; height:2px; background:#FF7A2F;"></span>VWAP(20)
-        </span>
-        <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
-          <span style="width:14px; height:0; border-top:1.5px dashed #94a3b8;"></span>볼린저 밴드
-        </span>
-      </div>
-      <div style="display:flex; gap:2px; background:{THEME['border']}55; padding:2px; border-radius:7px;">
-        {btns}
-      </div>
-    </div>
-    <style>
-    .pbtn {{
-      padding:2px 9px; font-size:9.5px; font-weight:600;
-      border-radius:5px; color:{THEME['text_sub']};
-      text-decoration:none; white-space:nowrap;
-    }}
-    .pbtn.on {{ background:{THEME['surface']}; color:{THEME['text_main']}; box-shadow:0 1px 2px rgba(0,0,0,0.15); }}
-    .pbtn:visited {{ color:{THEME['text_sub']}; }}
-    .pbtn.on:visited {{ color:{THEME['text_main']}; }}
-    </style>
-    """)
-
-    selected_bars = period_map[current]
+    selected_bars = period_map.get(current, period_map[period_labels[1]])
     start_idx = max(0, n - selected_bars)
 
     ma20 = display_df['Close'].rolling(20).mean()

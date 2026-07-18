@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from ui.common import render_tab_group
 
 from core.krx_listing import load_krx_listing, search_companies
 from core.price_data import load_price_data
@@ -130,33 +131,6 @@ div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p {{
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
-<style>
-div.st-key-candle_period_wrap div[data-testid="stHorizontalBlock"] {{
-    gap: 6px !important;
-}}
-div.st-key-candle_period_wrap button {{
-    border-radius: 8px !important;
-    padding: 4px 0 !important;
-    min-height: 30px !important;
-    font-size: 11.5px !important;
-    font-weight: 600 !important;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}}
-div.st-key-candle_period_wrap button[kind="secondary"] {{
-    background: transparent !important;
-    border: 1px solid {THEME['border']} !important;
-    color: {THEME['text_sub']} !important;
-}}
-div.st-key-candle_period_wrap button[kind="primary"] {{
-    background: transparent !important;
-    border: 1px solid {ACCENT} !important;
-    color: {ACCENT} !important;
-    box-shadow: none !important;
-}}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown(f"""
 <div style="font-size:22px; font-weight:800; color:{THEME['text_main']};">개미반대로</div>
 <div style="font-size:12.5px; color:{THEME['text_sub']}; margin-bottom:16px;">네이버 실시간 추천 인기글 기반 역발상 스캐너</div>
 """, unsafe_allow_html=True)
@@ -276,8 +250,9 @@ try:
 
     with col_main:
         render_company_header(selected_company, ticker_input, sector)
-        chart_mode = st.radio("차트 보기", ["라인", "캔들"], horizontal=True,
-                               label_visibility="collapsed", key="chart_mode_toggle")
+        chart_mode = render_tab_group(["라인", "캔들"], key="chart_mode_toggle", margin_bottom="-10px")
+
+
         if chart_mode == "라인":
             with st.container(border=True):
                 render_stock_chart(dates_korean, close_cleaned)
@@ -290,8 +265,8 @@ try:
         render_fundamental_stats(fundamentals)
         st.markdown(f"<hr style='border:none; border-top:1px solid {THEME['border']}; margin:14px 0 12px 0;'>", unsafe_allow_html=True)
 
-        indicator_mode = st.radio("지표 보기", ["가격 기반", "수급 기반"], horizontal=True,
-                                   label_visibility="collapsed", key="indicator_mode_toggle")
+        indicator_mode = render_tab_group(["가격 기반", "수급 기반"], key="indicator_mode_toggle")
+
         if indicator_mode == "가격 기반":
             render_indicator_group(price_keys, obj_indicators)
         else:

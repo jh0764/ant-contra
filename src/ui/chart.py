@@ -8,7 +8,7 @@ import pandas as pd
 from ui.common import html_block, render_tab_group, render_flex_row
 
 
-def render_stock_chart(dates_korean, close_cleaned):
+def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
     max_idx = close_cleaned.idxmax()
     min_idx = close_cleaned.idxmin()
 
@@ -16,37 +16,26 @@ def render_stock_chart(dates_korean, close_cleaned):
             {"date": str(d), "price": int(p)}
             for d, p in zip(dates_korean.tolist(), close_cleaned.tolist())
         ]
+    if volume_series is not None:
+        vol_list = volume_series.reset_index(drop=True).tolist()
+        for i, pt in enumerate(chart_points):
+            pt["volume"] = int(vol_list[i]) if i < len(vol_list) else 0
+    else:
+        for pt in chart_points:
+            pt["volume"] = 0
 
     chart_data_json = json.dumps(chart_points, ensure_ascii=False)
     max_point_idx = int(close_cleaned.reset_index(drop=True).idxmax())
     min_point_idx = int(close_cleaned.reset_index(drop=True).idxmin())
 
     chart_html = f"""
-        <div id="stockChartWrap" style="position:relative; width:100%; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
+        <div id="stockChartWrap" style="position:relative; width:100%; height:400px; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;">
           <div id="hoverInfo" style="position:absolute; top:0px; left:50%; transform:translateX(-50%);
                text-align:center; pointer-events:none; z-index:5; opacity:0; transition:opacity 0.1s;">
             <div id="hoverDate" style="color:#6b7280; font-size:13px; margin-bottom:2px;"></div>
-            <div id="hoverPrice" style="color:#1a1d29; font-size:28px; font-weight:700;"></div>
+            <div id="hoverPrice" style="color:#1a1d29; font-size:26px; font-weight:700;"></div>
           </div>
-          <svg id="stockSvg" width="100%" height="400" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMid meet"
-               style="display:block; cursor:crosshair;">
-            <defs>
-              <linearGradient id="lineFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#FF4B4B" stop-opacity="0.18"/>
-                <stop offset="100%" stop-color="#FF4B4B" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <g id="gridLines"></g>
-            <line id="spikeLine" x1="0" y1="0" x2="0" y2="400" stroke="rgba(148,163,184,0.35)"
-                  stroke-width="1" style="display:none;" />
-            <path id="areaFill" fill="url(#lineFillGrad)" stroke="none" />
-            <path id="priceLine" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linejoin="round" />
-            <circle id="hoverDot" r="5" fill="#FF4B4B" stroke="white" stroke-width="1.5" style="display:none;" />
-            <circle id="maxDot" r="4.5" fill="#FF4B4B" stroke="white" stroke-width="1.5" />
-            <circle id="minDot" r="4.5" fill="#FF4B4B" stroke="white" stroke-width="1.5" />
-            <text id="maxLabel" fill="#FF6B6B" font-size="13" font-weight="600" text-anchor="middle"></text>
-            <text id="minLabel" fill="#FF6B6B" font-size="13" font-weight="600" text-anchor="middle"></text>
-          </svg>
+          <svg id="stockSvg" width="100%" height="100%" style="display:block; cursor:crosshair;"></svg>
         </div>
         <script>
         (function() {{
@@ -55,7 +44,39 @@ def render_stock_chart(dates_korean, close_cleaned):
             const minIdx = {min_point_idx};
 
             const svg = document.getElementById("stockSvg");
+            const wrap = document.getElementById("stockChartWrap");
+            const hoverDot_ = null;
+
+            const NS = "http://www.w3.org/2000/svg";
+            function el(tag, attrs) {{
+                const e = document.createElementNS(NS, tag);
+                for (const k in attrs) e.setAttribute(k, attrs[k]);
+                return e;
+            }}
+
+            svg.innerHTML = `
+              <defs>
+                <linearGradient id="lineFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#FF4B4B" stop-opacity="0.20"/>
+                  <stop offset="100%" stop-color="#FF4B4B" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g id="gridLines"></g>
+              <g id="volumeBars"></g>
+              <g id="xAxisLabels"></g>
+              <line id="spikeLine" x1="0" y1="0" x2="0" y2="0" stroke="rgba(148,163,184,0.35)" stroke-width="1" style="display:none;" />
+              <path id="areaFill" fill="url(#lineFillGrad)" stroke="none" />
+              <path id="priceLine" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linejoin="round" />
+              <circle id="hoverDot" r="5" fill="#FF4B4B" stroke="white" stroke-width="1.5" style="display:none;" />
+              <circle id="maxDot" r="4.5" fill="#FF4B4B" stroke="white" stroke-width="1.5" />
+              <circle id="minDot" r="4.5" fill="#FF4B4B" stroke="white" stroke-width="1.5" />
+              <text id="maxLabel" fill="#c53030" font-size="12.5" font-weight="700" text-anchor="middle"></text>
+              <text id="minLabel" fill="#c53030" font-size="12.5" font-weight="700" text-anchor="middle"></text>
+            `;
+
             const gridLines = document.getElementById("gridLines");
+            const volumeBars = document.getElementById("volumeBars");
+            const xAxisLabels = document.getElementById("xAxisLabels");
             const pathEl = document.getElementById("priceLine");
             const areaEl = document.getElementById("areaFill");
             const spikeLine = document.getElementById("spikeLine");
@@ -68,56 +89,134 @@ def render_stock_chart(dates_korean, close_cleaned):
             const maxLabel = document.getElementById("maxLabel");
             const minLabel = document.getElementById("minLabel");
 
-            const W = 1000, H = 400;
-            const padTop = 30, padBottom = 30, padX = 60;
+            let W = 1000, H = 400;
+            let padX = 100;
+            const padTop = 44, padBottomChart = 4;   // 상단: 호버가격 표시 여유 / 하단: 여유 최소화
+            let priceTop, priceBottom, volTop, volBottom, xAxisY;
 
             const prices = data.map(d => d.price);
             const minP = Math.min(...prices);
             const maxP = Math.max(...prices);
             const range = (maxP - minP) || 1;
+            const useLog = (maxP / Math.max(minP, 1)) >= 3;
+            const logMin = Math.log(Math.max(minP, 1));
+            const logMax = Math.log(Math.max(maxP, 1));
+            const logRange = (logMax - logMin) || 1;
+
+            const volumes = data.map(d => d.volume || 0);
+            const maxVol = Math.max(...volumes, 1);
 
             function xPos(i) {{
                 if (data.length === 1) return W / 2;
-                return padX + (i / (data.length - 1)) * (W - padX * 2);
+                return padX + (i / (data.length - 1)) * (W - padX - 16);
             }}
             function yPos(price) {{
-                const usableH = H - padTop - padBottom;
-                return padTop + (1 - (price - minP) / range) * usableH;
+                const usableH = priceBottom - priceTop;
+                if (useLog) {{
+                    const logP = Math.log(Math.max(price, 1));
+                    return priceTop + (1 - (logP - logMin) / logRange) * usableH;
+                }}
+                return priceTop + (1 - (price - minP) / range) * usableH;
+            }}
+            function anchorFor(x) {{
+                if (x < padX + 45) return "start";
+                if (x > W - 45) return "end";
+                return "middle";
+            }}
+            function fmtDate(dstr) {{
+                const parts = dstr.split(".");
+                return parts.length === 3 ? `${{parts[1]}}/${{parts[2]}}` : dstr;
             }}
 
-            function anchorFor(x) {{
-                if (x < padX + 40) return "start";
-                if (x > W - padX - 40) return "end";
-                return "middle";
+            function computeLayout() {{
+                const rect = svg.getBoundingClientRect();
+                W = Math.max(1, rect.width);
+                H = Math.max(1, rect.height);
+                svg.setAttribute("viewBox", `0 0 ${{W}} ${{H}}`);
+
+                priceTop = padTop;
+                volBottom = H - padBottomChart - 16;
+                volTop = volBottom - Math.max(40, H * 0.16);
+                priceBottom = volTop - 22;
+
+                xAxisY = H - 6;
+                spikeLine.setAttribute("y2", H);
             }}
 
             function drawGrid() {{
                 gridLines.innerHTML = "";
                 const steps = 4;
                 for (let i = 0; i <= steps; i++) {{
-                    const price = minP + (range * i / steps);
+                    const price = useLog
+                        ? Math.exp(logMin + (logRange * i / steps))
+                        : minP + (range * i / steps);
                     const y = yPos(price);
-                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    line.setAttribute("x1", padX);
-                    line.setAttribute("x2", W - 10);
-                    line.setAttribute("y1", y.toFixed(2));
-                    line.setAttribute("y2", y.toFixed(2));
-                    line.setAttribute("stroke", "rgba(148,163,184,0.18)");
-                    line.setAttribute("stroke-width", "1");
-                    gridLines.appendChild(line);
-
-                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    label.setAttribute("x", padX - 10);
-                    label.setAttribute("y", (y + 4).toFixed(2));
-                    label.setAttribute("text-anchor", "end");
-                    label.setAttribute("font-size", "11");
-                    label.setAttribute("fill", "#94a3b8");
+                    gridLines.appendChild(el("line", {{
+                        x1: padX, x2: W - 8, y1: y.toFixed(2), y2: y.toFixed(2),
+                        stroke: "rgba(148,163,184,0.18)", "stroke-width": "1"
+                    }}));
+                    const label = el("text", {{
+                        x: padX - 12, y: (y + 4).toFixed(2), "text-anchor": "end",
+                        "font-size": "12.5", "font-weight": "500", fill: "#94a3b8"
+                    }});
                     label.textContent = Math.round(price).toLocaleString() + "원";
                     gridLines.appendChild(label);
                 }}
             }}
 
+            function drawVolume() {{
+                volumeBars.innerHTML = "";
+                const barGap = 1;
+                const barW = Math.max(1, ((W - padX - 16) / data.length) - barGap);
+                const bandH = volBottom - volTop;
+
+                const vLabel = el("text", {{
+                    x: padX, y: volTop - 6, "font-size": "10.5", fill: "#94a3b8"
+                }});
+                vLabel.textContent = "거래량";
+                volumeBars.appendChild(vLabel);
+
+                data.forEach((d, i) => {{
+                    const h = (d.volume / maxVol) * bandH;
+                    const x = xPos(i) - barW / 2;
+                    const y = volBottom - h;
+                    const isUp = i === 0 ? true : d.price >= data[i - 1].price;
+                    volumeBars.appendChild(el("rect", {{
+                        x: x.toFixed(2), y: y.toFixed(2), width: barW.toFixed(2),
+                        height: Math.max(1, h).toFixed(2),
+                        fill: isUp ? "{PRICE_COLOR['up']}" : "{PRICE_COLOR['down']}",
+                        "fill-opacity": "0.35"
+                    }}));
+                }});
+            }}
+
+            function drawXAxis() {{
+                xAxisLabels.innerHTML = "";
+                const tickCount = Math.min(6, data.length);
+                for (let t = 0; t < tickCount; t++) {{
+                    const idx = Math.round((data.length - 1) * (t / (tickCount - 1)));
+                    const x = xPos(idx);
+                    const label = el("text", {{
+                        x: x, y: xAxisY, "text-anchor": anchorFor(x),
+                        "font-size": "11.5", fill: "#94a3b8"
+                    }});
+                    label.textContent = fmtDate(data[idx].date);
+                    xAxisLabels.appendChild(label);
+                }}
+            }}
+
+            function addLabelChip(labelEl) {{
+                const bbox = labelEl.getBBox();
+                const rect = el("rect", {{
+                    x: bbox.x - 6, y: bbox.y - 3, width: bbox.width + 12, height: bbox.height + 6,
+                    rx: 5, fill: "#ffffff", "fill-opacity": "0.92", stroke: "#FF4B4B33"
+                }});
+                labelEl.parentNode.insertBefore(rect, labelEl);
+            }}
+
             function redraw() {{
+                computeLayout();
+
                 let pathD = "";
                 data.forEach((d, i) => {{
                     const x = xPos(i), y = yPos(d.price);
@@ -125,8 +224,7 @@ def render_stock_chart(dates_korean, close_cleaned):
                 }});
                 pathEl.setAttribute("d", pathD);
 
-                const bottomY = H - padBottom;
-                const areaD = pathD + `L ${{xPos(data.length - 1).toFixed(2)}},${{bottomY}} L ${{xPos(0).toFixed(2)}},${{bottomY}} Z`;
+                const areaD = pathD + `L ${{xPos(data.length - 1).toFixed(2)}},${{priceBottom}} L ${{xPos(0).toFixed(2)}},${{priceBottom}} Z`;
                 areaEl.setAttribute("d", areaD);
 
                 const maxX = xPos(maxIdx), maxY = yPos(data[maxIdx].price);
@@ -137,16 +235,20 @@ def render_stock_chart(dates_korean, close_cleaned):
                 const labelsClose = Math.abs(maxY - minY) < 30 && Math.abs(maxX - minX) < 120;
 
                 maxLabel.setAttribute("x", maxX);
-                maxLabel.setAttribute("y", Math.max(16, maxY - 14));
+                maxLabel.setAttribute("y", Math.max(priceTop + 14, maxY - 14));
                 maxLabel.setAttribute("text-anchor", anchorFor(maxX));
                 maxLabel.textContent = "최고 " + data[maxIdx].price.toLocaleString() + "원";
 
                 minLabel.setAttribute("x", minX);
-                minLabel.setAttribute("y", labelsClose ? Math.min(H - padBottom - 6, minY + 34) : Math.min(H - padBottom - 6, minY + 20));
+                minLabel.setAttribute("y", labelsClose ? Math.min(priceBottom - 6, minY + 34) : Math.min(priceBottom - 6, minY + 20));
                 minLabel.setAttribute("text-anchor", anchorFor(minX));
                 minLabel.textContent = "최저 " + data[minIdx].price.toLocaleString() + "원";
 
+                [maxLabel, minLabel].forEach(addLabelChip);
+
                 drawGrid();
+                drawVolume();
+                drawXAxis();
             }}
 
             redraw();

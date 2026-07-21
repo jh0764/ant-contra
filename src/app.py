@@ -144,6 +144,12 @@ div[data-testid="stPlotlyChart"] {{
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+div.st-key-line_chart_box { padding: 8px 14px 4px 14px !important; }
+</style>
+""", unsafe_allow_html=True)
+
 
 
 KRX_LISTING, KRX_SOURCE, KRX_ERROR = load_krx_listing()
@@ -254,8 +260,8 @@ try:
 
 
         if chart_mode == "라인":
-            with st.container(border=True):
-                render_stock_chart(dates_korean, close_cleaned)
+            with st.container(border=True, key="line_chart_box"):
+                render_stock_chart(dates_korean, close_cleaned, volume_series)
         else:
             render_candle_chart(df)
 

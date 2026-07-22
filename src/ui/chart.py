@@ -12,9 +12,10 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
     max_idx = close_cleaned.idxmax()
     min_idx = close_cleaned.idxmin()
 
+    volumes = volume_series.tolist() if volume_series is not None else [None] * len(close_cleaned)
     chart_points = [
-            {"date": str(d), "price": int(p)}
-            for d, p in zip(dates_korean.tolist(), close_cleaned.tolist())
+            {"date": str(d), "price": int(p), "volume": (int(v) if v is not None else None)}
+            for d, p, v in zip(dates_korean.tolist(), close_cleaned.tolist(), volumes)
         ]
     if volume_series is not None:
         vol_list = volume_series.reset_index(drop=True).tolist()

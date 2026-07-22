@@ -2,6 +2,15 @@ import requests
 from bs4 import BeautifulSoup
 import streamlit as st
 from core.naver_scraper import _fetch_frgn_rows
+from constants import (
+    FOMO_HOT_THRESHOLD, SCORE_NEAR_HIGH_W52, SCORE_NEAR_LOW_W52,
+    SCORE_RSI_HOT, SCORE_RSI_COLD, SCORE_PANIC_SELL_PVD,
+    SCORE_SUPPLY_FEAR_FOREIGN, SCORE_HIGH_DRAWDOWN,
+    SCORE_FOREIGN_STRONG, SCORE_VOL_STRONG, SCORE_OBV_STRONG,
+    SCORE_COMMUNITY_HIGH, SCORE_COMMUNITY_LOW,
+    SCORE_ADJ_MIN, SCORE_ADJ_MAX, SCORE_KOSDAQ_ADJ,
+    SCORE_FINAL_MIN, SCORE_FINAL_MAX,
+)
 
 def calculate_fomo_index(ticker_code):
     try:
@@ -40,8 +49,7 @@ def calculate_fomo_index(ticker_code):
     except Exception as e:
         return {"score": 50, "label": f"FOMO — {str(e)[:30]}", "desc": "수집 불가", "color": "#475569"}
 
-def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
-
+def _extract_score_flags(obj_indicators, fomo_score):
     rsi_val       = obj_indicators.get("rsi",     {}).get("value", 50) or 50
     w52_score     = obj_indicators.get("w52",     {}).get("score", 0)
     vol_score     = obj_indicators.get("volume",  {}).get("score", 0)
@@ -50,49 +58,66 @@ def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
     obv_score     = obj_indicators.get("obv", {}).get("score", 0)
     foreign_score = obj_indicators.get("foreign", {}).get("score", 0)
     drawdown_val  = obj_indicators.get("drawdown", {}).get("value", 0)
-    
-    is_near_high   = w52_score <= -8
-    is_near_low    = w52_score >= 10
-    is_fomo_hot    = fomo_score >= 70
-    is_panic_sell  = pvd_score >= 12
-    is_rsi_hot     = rsi_val >= 65
-    is_rsi_cold    = rsi_val <= 35
-    is_supply_fear = foreign_score >= 8
-    is_high_drawdown = drawdown_val >= 30
-    
-    # 조건 분기는 보정값(delta)으로만 사용
-    if   is_near_high and is_fomo_hot and is_rsi_hot:       base = 15
-    elif is_near_high and is_fomo_hot:                      base = 22
-    elif is_near_high and is_rsi_hot:                       base = 28
-    elif is_near_high:                                      base = 35
-    elif is_near_low and is_panic_sell and is_rsi_cold:     base = 88
-    elif is_near_low and is_panic_sell:                     base = 78
-    elif is_near_low and is_rsi_cold:                       base = 72
-    elif is_near_low:                                       base = 63
-    elif is_high_drawdown and is_panic_sell and is_rsi_cold: base = 75
-    elif is_high_drawdown and is_rsi_cold:                  base = 65
-    elif is_high_drawdown and is_panic_sell:                base = 68
-    elif is_high_drawdown and bb_score >= 8:                base = 60
-    elif is_high_drawdown:                                  base = 55
-    elif is_panic_sell and is_rsi_cold:                     base = 70
-    elif is_rsi_cold and bb_score >= 8:                     base = 65
-    elif is_rsi_hot  and is_fomo_hot:                       base = 25
-    elif is_rsi_hot:                                        base = 38
-    else:                                                   base = 50
-    
-    adj = 0
-    if is_supply_fear:      adj += 8
-    if foreign_score >= 10: adj += 4
-    if vol_score     >= 10: adj += 4
-    if obv_score     >= 12: adj += 3
-    if is_fomo_hot:         adj -= 7
-    if community_raw >= 65: adj += 4
-    if community_raw <= 35: adj -= 4
-    if is_high_drawdown: adj += 5
-    adj = max(-10, min(10, adj))
 
-    kosdaq_adj = 3 if is_kosdaq else 0
-    final_scream_score = int(max(5, min(95, base + adj + kosdaq_adj))) 
+    return {
+        "vol_score": vol_score, "bb_score": bb_score, "obv_score": obv_score,
+        "foreign_score": foreign_score,
+        "is_near_high":   w52_score <= SCORE_NEAR_HIGH_W52,
+        "is_near_low":    w52_score >= SCORE_NEAR_LOW_W52,
+        "is_fomo_hot":    fomo_score >= FOMO_HOT_THRESHOLD,
+        "is_panic_sell":  pvd_score >= SCORE_PANIC_SELL_PVD,
+        "is_rsi_hot":     rsi_val >= SCORE_RSI_HOT,
+        "is_rsi_cold":    rsi_val <= SCORE_RSI_COLD,
+        "is_supply_fear": foreign_score >= SCORE_SUPPLY_FEAR_FOREIGN,
+        "is_high_drawdown": drawdown_val >= SCORE_HIGH_DRAWDOWN,
+    }
+
+
+def _determine_base_score(f):
+    is_near_high, is_near_low = f["is_near_high"], f["is_near_low"]
+    is_fomo_hot, is_panic_sell = f["is_fomo_hot"], f["is_panic_sell"]
+    is_rsi_hot, is_rsi_cold = f["is_rsi_hot"], f["is_rsi_cold"]
+    is_high_drawdown, bb_score = f["is_high_drawdown"], f["bb_score"]
+
+    if   is_near_high and is_fomo_hot and is_rsi_hot:       return 15
+    elif is_near_high and is_fomo_hot:                      return 22
+    elif is_near_high and is_rsi_hot:                       return 28
+    elif is_near_high:                                      return 35
+    elif is_near_low and is_panic_sell and is_rsi_cold:     return 88
+    elif is_near_low and is_panic_sell:                     return 78
+    elif is_near_low and is_rsi_cold:                       return 72
+    elif is_near_low:                                       return 63
+    elif is_high_drawdown and is_panic_sell and is_rsi_cold: return 75
+    elif is_high_drawdown and is_rsi_cold:                  return 65
+    elif is_high_drawdown and is_panic_sell:                return 68
+    elif is_high_drawdown and bb_score >= 8:                return 60
+    elif is_high_drawdown:                                  return 55
+    elif is_panic_sell and is_rsi_cold:                     return 70
+    elif is_rsi_cold and bb_score >= 8:                     return 65
+    elif is_rsi_hot  and is_fomo_hot:                       return 25
+    elif is_rsi_hot:                                        return 38
+    else:                                                   return 50
+
+
+def _compute_score_adjustment(f, community_raw):
+    adj = 0
+    if f["is_supply_fear"]:              adj += 8
+    if f["foreign_score"] >= SCORE_FOREIGN_STRONG: adj += 4
+    if f["vol_score"]     >= SCORE_VOL_STRONG:     adj += 4
+    if f["obv_score"]     >= SCORE_OBV_STRONG:     adj += 3
+    if f["is_fomo_hot"]:                  adj -= 7
+    if community_raw >= SCORE_COMMUNITY_HIGH: adj += 4
+    if community_raw <= SCORE_COMMUNITY_LOW:  adj -= 4
+    if f["is_high_drawdown"]: adj += 5
+    return max(SCORE_ADJ_MIN, min(SCORE_ADJ_MAX, adj))
+
+
+def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
+    flags = _extract_score_flags(obj_indicators, fomo_score)
+    base = _determine_base_score(flags)
+    adj = _compute_score_adjustment(flags, community_raw)
+    kosdaq_adj = SCORE_KOSDAQ_ADJ if is_kosdaq else 0
+    final_scream_score = int(max(SCORE_FINAL_MIN, min(SCORE_FINAL_MAX, base + adj + kosdaq_adj)))
     
     # 임계값 구간 판정 텍스트 (게이지 아래 표시용)
     if final_scream_score >= 85:

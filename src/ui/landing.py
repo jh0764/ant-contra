@@ -1,8 +1,8 @@
 import streamlit as st
-
+from constants import THEME
 
 def render_landing():
-    st.markdown("""
+    st.markdown(f"""
     <div style="text-align:center; padding: 60px 20px 40px 20px;">
       <div style="font-size:56px; margin-bottom:16px;">🤖</div>
       <h1 style="font-size:32px; font-weight:800; color:{THEME['text_main']}; margin-bottom:8px;">

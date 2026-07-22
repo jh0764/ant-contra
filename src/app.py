@@ -25,11 +25,6 @@ from ui.sidebar_cards import (
     render_signal_summary, render_fomo_panel, render_indicator_group, 
     render_risk_card
 )
-from ui.sidebar_cards import (
-    render_entry_card, render_gauge_and_tier, render_score_metrics,
-    render_signal_summary, render_fomo_panel, render_indicator_group, 
-    render_risk_card
-)
 from ui.ticker_badge import render_company_header
 
 from constants import THEME, ACCENT

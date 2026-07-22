@@ -1,5 +1,12 @@
 import pandas as pd
 import numpy as np
+from constants import (
+    RSI_OVERSOLD, RSI_WEAK_RECOVERY, RSI_OVERBOUGHT,
+    BB_LOWER_NEAR_PCT, BB_UPPER_NEAR_PCT,
+    W52_LOW_NEAR_PCT, W52_HIGH_NEAR_PCT, W52_LOW_ZONE_PCT,
+    DRAWDOWN_DEEP, DRAWDOWN_SIGNIFICANT, DRAWDOWN_MODERATE, DRAWDOWN_NEAR_HIGH,
+    VOL_SURGE_RATIO, VOL_DEAD_RATIO, VOL_MICRO_CAP_THRESHOLD_EOK,
+)
 
 def calculate_objective_indicators(close_series, volume_series, foreign_data, news_data, is_kosdaq,
                                     high_series=None, low_series=None, rs_data=None):
@@ -14,13 +21,13 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
         avg_loss = loss.rolling(14).mean()
         rs = avg_gain / avg_loss.replace(0, 1e-9)
         rsi_val = float(100 - (100 / (1 + rs.iloc[-1])))
-        if rsi_val <= 30:
+        if rsi_val <= RSI_OVERSOLD:
             rsi_status, rsi_label = "green", f"RSI {rsi_val:.1f} — 과매도 극단 구간"
             rsi_desc, rsi_score = "통계적 바닥 근접. 역발상 매수 우위 신호", 15
-        elif rsi_val <= 45:
+        elif rsi_val <= RSI_WEAK_RECOVERY:
             rsi_status, rsi_label = "yellow", f"RSI {rsi_val:.1f} — 약세 회복 구간"
             rsi_desc, rsi_score = "과매도 직후 회복 중. 추이 관찰 필요", 7
-        elif rsi_val >= 70:
+        elif rsi_val >= RSI_OVERBOUGHT:
             rsi_status, rsi_label = "red", f"RSI {rsi_val:.1f} — 과매수 과열 구간"
             rsi_desc, rsi_score = "단기 고점 가능성. 역발상 매수 불리", -5
         else:
@@ -44,10 +51,10 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
         if current <= lower_val:
             bb_status, bb_label = "green", f"볼린저 하단 이탈 ({position_pct:.0f}%)"
             bb_desc, bb_score = "통계적으로 2.3%만 해당하는 극단 하락 구간", 15
-        elif position_pct <= 25:
+        elif position_pct <= BB_LOWER_NEAR_PCT:
             bb_status, bb_label = "green", f"볼린저 하단 근접 ({position_pct:.0f}%)"
             bb_desc, bb_score = "하단 밴드 근접 중. 반등 가능성 높은 구간", 8
-        elif position_pct >= 80:
+        elif position_pct >= BB_UPPER_NEAR_PCT:
             bb_status, bb_label = "red", f"볼린저 상단 근접 ({position_pct:.0f}%)"
             bb_desc, bb_score = "상단 밴드 근접. 단기 과열 구간", -5
         else:
@@ -64,13 +71,13 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
         current = float(close_series.iloc[-1])
         gap_from_low_pct = ((current - week52_low) / week52_low) * 100
         gap_from_high_pct = ((week52_high - current) / week52_high) * 100
-        if gap_from_low_pct <= 5:
+        if gap_from_low_pct <= W52_LOW_NEAR_PCT:
             w52_status, w52_label = "green", f"52주 신저가 +{gap_from_low_pct:.1f}%"
             w52_desc, w52_score = "신저가 5% 이내. 역발상 매수 최적 구간", 12
-        elif gap_from_high_pct <= 3:
+        elif gap_from_high_pct <= W52_HIGH_NEAR_PCT:
             w52_status, w52_label = "red", f"52주 신고가 근접 (-{gap_from_high_pct:.1f}%)"
             w52_desc, w52_score = "신고가 구간. 공포 아닌 과열 국면. 추격 위험", -10
-        elif gap_from_low_pct <= 15:
+        elif gap_from_low_pct <= W52_LOW_ZONE_PCT:
             w52_status, w52_label = "yellow", f"52주 저가 +{gap_from_low_pct:.1f}%"
             w52_desc, w52_score = "저점 영역 내 위치", 4
         else:
@@ -85,16 +92,16 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
         week52_high = float(close_series.max())
         current = float(close_series.iloc[-1])
         drawdown_pct = (week52_high - current) / week52_high * 100
-        if drawdown_pct >= 40:
+        if drawdown_pct >= DRAWDOWN_DEEP:
             dd_status, dd_label = "green", f"고점 대비 -{drawdown_pct:.1f}% (대낙폭)"
             dd_desc, dd_score = "장기 투자자 손실 구간. 역발상 유효", 15
-        elif drawdown_pct >= 25:
+        elif drawdown_pct >= DRAWDOWN_SIGNIFICANT:
             dd_status, dd_label = "green", f"고점 대비 -{drawdown_pct:.1f}%"
             dd_desc, dd_score = "유의미한 조정 구간", 8
-        elif drawdown_pct >= 15:
+        elif drawdown_pct >= DRAWDOWN_MODERATE:
             dd_status, dd_label = "yellow", f"고점 대비 -{drawdown_pct:.1f}%"
             dd_desc, dd_score = "중간 조정. 추세 확인 필요", 3
-        elif drawdown_pct <= 5:
+        elif drawdown_pct <= DRAWDOWN_NEAR_HIGH:
             dd_status, dd_label = "red", f"고점 근접 -{drawdown_pct:.1f}%"
             dd_desc, dd_score = "신고가 부근. 역발상 불리", -10
         else:
@@ -139,19 +146,19 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
         price_prev = float(close_series.iloc[-2])
         price_chg = (price_today - price_prev) / price_prev
         turnover_today = vol_today * price_today / 1e8
-        is_micro = turnover_today < 10
+        is_micro = turnover_today < VOL_MICRO_CAP_THRESHOLD_EOK
         capped_ratio = min(vol_ratio, 3.0) if is_micro else vol_ratio
-        if capped_ratio >= 2.0 and price_chg < -0.01:
+        if capped_ratio >= VOL_SURGE_RATIO and price_chg < -0.01:
             vol_status = "green"
             vol_label = f"거래량 {capped_ratio:.1f}배 + 하락 — 투매 ({turnover_today:.0f}억)"
             vol_desc = f"패닉셀 수급 ({turnover_today:.0f}억원). 바닥 신호 유력"
             vol_score = 14 if turnover_today >= 100 else 8
-        elif capped_ratio >= 2.0 and price_chg > 0.01:
+        elif capped_ratio >= VOL_SURGE_RATIO and price_chg > 0.01:
             vol_status = "red"
             vol_label = f"거래량 {capped_ratio:.1f}배 + 상승 — 추격 ({turnover_today:.0f}억)"
             vol_desc = "상승 동반 대량 거래 = 추격 위험"
             vol_score = -8
-        elif capped_ratio <= 0.4:
+        elif capped_ratio <= VOL_DEAD_RATIO:
             vol_status = "yellow"
             vol_label = f"거래량 {capped_ratio:.1f}배 — 무기력 ({turnover_today:.0f}억)"
             vol_desc = "투항 후 무관심 구간"

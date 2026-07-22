@@ -1,6 +1,5 @@
 import streamlit as st
-from constants import THEME, ACCENT
-import urllib.parse
+from constants import THEME
 
 def html_block(content: str):
     lines = [line.lstrip() for line in content.strip("\n").splitlines()]

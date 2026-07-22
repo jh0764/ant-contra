@@ -6,13 +6,13 @@ from constants import STATUS_STYLE, THEME, PRICE_COLOR
 
 def render_entry_card(entry):
     html_block(
-            f"""<div style="background:{THEME['surface']}; border:2px solid {entry['color']}55;
+            f"""<div style="background:{THEME['surface']}; border:1px solid {entry['color']};
                 border-radius:10px; padding:14px 16px; margin:0 0 14px 0;">
             <div style="font-size:15px; font-weight:700; color:{entry['color']};
                 margin-bottom:4px;">{entry['level']}</div>
-            <div style="font-size:11.5px; color:{THEME['text_sub']}; margin-bottom:6px;">{entry['desc']}</div>
-            <div style="background:{entry['color']}18; border-radius:6px; padding:6px 10px;
-                font-size:12px; color:{entry['color']}; font-weight:600;">
+            <div style="font-size:12px; color:{THEME['text_sub']}; margin-bottom:10px;">{entry['desc']}</div>
+            <div style="background:{entry['color']}18; border-radius:6px; padding:8px 12px;
+                font-size:12px; color:{entry['color']}; font-weight:700;">
                 → {entry['action']}
             </div>
             </div>"""
@@ -95,15 +95,15 @@ def render_indicator_group(keys, obj_indicators, group_label=None):
         ind = obj_indicators.get(key, {})
         sty = STATUS_STYLE[ind.get("status", "yellow")]
         st.markdown(
-            f"""<div style="background:{sty['bg']}; border:2px solid {sty['border']}; border-left:5px solid {sty['border']};
-                 border-radius:8px; padding:10px 12px; margin-bottom:6px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                <div style="font-size:12px; color:{THEME['text_main']};">{title}</div>
+            f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
+                 border-radius:10px; padding:12px 14px; margin-bottom:6px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div style="font-size:12px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
                 <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:10px;
-                       padding:1px 7px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
+                       padding:2px 8px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
               </div>
-              <div style="font-size:12px; color:{THEME['text_main']}; font-weight:600;">{ind.get('label','—')}</div>
-              <div style="font-size:10.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
+              <div style="font-size:13px; color:{THEME['text_main']}; font-weight:600; margin-bottom:2px;">{ind.get('label','—')}</div>
+              <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
             </div>""",
             unsafe_allow_html=True
         )

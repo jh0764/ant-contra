@@ -25,8 +25,11 @@ greedy_dictionary = [
     ]
 
 THEME = {
-    "bg": "#EEF0F3", "surface": "#FFFFFF", "border": "#DDE1E6",
-    "text_main": "#1A1D29", "text_sub": "#6B7280",
+    "bg": "#EEF0F3", 
+    "surface": "#FFFFFF", 
+    "border": "#DDE1E6",
+    "text_main": "#1A1D29", 
+    "text_sub": "#6B7280",
 }
 PRICE_COLOR = {"up": "#f04452", "down": "#3182f6"}
 

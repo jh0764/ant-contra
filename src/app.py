@@ -87,7 +87,7 @@ div[data-testid="stRadio"] label[data-baseweb="radio"] {{
     min-height: 0 !important;
     background: #2b2b2b !important;
     cursor: pointer;
-    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1),
                 background-color 0.25s ease,
                 border-color 0.25s ease;
 }}
@@ -191,7 +191,7 @@ selected_company = selected_item.split(" (")[0]
 ticker_input = selected_item.split(" (")[1].replace(")", "").strip()
 
 st.success(f"✅ **{selected_company}**({ticker_input}) 대시보드를 안정적으로 로드했습니다.")
-st.markdown("---")
+st.markdown("<hr style='margin-top:4px; margin-bottom:14px;'>", unsafe_allow_html=True)
 
 df, market_suffix = load_price_data(ticker_input)
 fundamentals = get_fundamental_data(ticker_input)

@@ -90,8 +90,8 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
             const minLabel = document.getElementById("minLabel");
 
             let W = 1000, H = 400;
-            let padX = 100;
-            const padTop = 44, padBottomChart = 4;   // 상단: 호버가격 표시 여유 / 하단: 여유 최소화
+            let padX = 56;
+            const padTop = 62, padBottomChart = 28;   // 상단: 호버가격과 간격 확보 / 하단: 날짜 잘림 방지
             let priceTop, priceBottom, volTop, volBottom, xAxisY;
 
             const prices = data.map(d => d.price);
@@ -127,19 +127,36 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 const parts = dstr.split(".");
                 return parts.length === 3 ? `${{parts[1]}}/${{parts[2]}}` : dstr;
             }}
-
+            
+            function fmtPriceCompact(price) {{
+            if (price >= 100000000) return (price / 100000000).toFixed(price >= 1000000000 ? 1 : 2) + "억원";
+            if (price >= 10000) return Math.round(price / 10000).toLocaleString() + "만원";
+            return Math.round(price).toLocaleString() + "원";
+            }}
+            
             function computeLayout() {{
                 const rect = svg.getBoundingClientRect();
                 W = Math.max(1, rect.width);
                 H = Math.max(1, rect.height);
                 svg.setAttribute("viewBox", `0 0 ${{W}} ${{H}}`);
-
+                
+                const measure = el("text", {{ "font-size": "12.5", "font-weight": "500" }});
+                measure.style.visibility = "hidden";
+                measure.textContent = fmtPriceCompact(minP).length > fmtPriceCompact(maxP).length
+                    ? fmtPriceCompact(minP) : fmtPriceCompact(maxP);
+                svg.appendChild(measure);
+                const labelWidth = measure.getBBox().width;
+                svg.removeChild(measure);
+                const edgeMargin = 2;   // 화면 왼쪽 끝과 라벨 사이 최소 여백 (이 값만 줄이면 됨)
+                const labelGap = 12;    // 라벨과 그래프 시작선 사이 간격 (고정)
+                padX = Math.ceil(labelWidth) + labelGap + edgeMargin;
+                
                 priceTop = padTop;
                 volBottom = H - padBottomChart - 16;
                 volTop = volBottom - Math.max(40, H * 0.16);
                 priceBottom = volTop - 22;
 
-                xAxisY = H - 6;
+                xAxisY = H - 12;
                 spikeLine.setAttribute("y2", H);
             }}
 
@@ -159,7 +176,7 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                         x: padX - 12, y: (y + 4).toFixed(2), "text-anchor": "end",
                         "font-size": "12.5", "font-weight": "500", fill: "#94a3b8"
                     }});
-                    label.textContent = Math.round(price).toLocaleString() + "원";
+                    label.textContent = fmtPriceCompact(price);
                     gridLines.appendChild(label);
                 }}
             }}
@@ -209,7 +226,8 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 const bbox = labelEl.getBBox();
                 const rect = el("rect", {{
                     x: bbox.x - 6, y: bbox.y - 3, width: bbox.width + 12, height: bbox.height + 6,
-                    rx: 5, fill: "#ffffff", "fill-opacity": "0.92", stroke: "#FF4B4B33"
+                    rx: 5, fill: "#ffffff", "fill-opacity": "0.92", stroke: "#FF4B4B33",
+                    class: "labelChip"
                 }});
                 labelEl.parentNode.insertBefore(rect, labelEl);
             }}
@@ -244,6 +262,7 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 minLabel.setAttribute("text-anchor", anchorFor(minX));
                 minLabel.textContent = "최저 " + data[minIdx].price.toLocaleString() + "원";
 
+                svg.querySelectorAll(".labelChip").forEach(chip => chip.remove());
                 [maxLabel, minLabel].forEach(addLabelChip);
 
                 drawGrid();
@@ -298,7 +317,7 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
         </script>
         """
 
-    components.html(chart_html, height=400)
+    components.html(chart_html, height=420)
     
 def render_candle_chart(df, key_prefix="candle"):
     display_df = df.reset_index(drop=True)

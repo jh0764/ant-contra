@@ -42,26 +42,71 @@ def render_price_info(current_price, change_pct, ant_refund_line, fib, volatilit
     if volatility_warning:
         st.warning(volatility_warning)
 
-def render_community_tab(naver_posts, ai_reason=None):
-    st.markdown(f"<p style='font-size:14px; font-weight:700; color:{THEME['text_main']};'>실시간 주주 비명소리</p>", unsafe_allow_html=True)
+def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
+# 네이버 종목토론방 바로가기 URL 생성
+    naver_board_url = f"https://finance.naver.com/item/board.naver?code={ticker_code}" if ticker_code else "#"
+
+# 이미지와 동일한 링크(Link) 모양의 SVG 아이콘 배치
+    st.markdown(f"""
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:14px; font-weight:800; color:{THEME['text_main']};">실시간 주주 비명소리</span>
+        <a href="{naver_board_url}" target="_blank" title="네이버 종목토론방 바로가기" style="text-decoration:none; display:inline-flex; align-items:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+                 style="transition:stroke 0.2s; cursor:pointer;"
+                 onmouseover="this.style.stroke='#111827'"
+                 onmouseout="this.style.stroke='#9ca3af'">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
     if ai_reason:
         st.markdown(
-            f"<p style='font-size:11.5px; color:{THEME['text_sub']}; margin-top:-4px; margin-bottom:8px;'>{ai_reason}</p>",
+            f"<p style='font-size:11.5px; color:{THEME['text_sub']}; margin-top:-2px; margin-bottom:10px;'>{ai_reason}</p>",
             unsafe_allow_html=True
         )
-    cols_post = st.columns(2)
-    for idx, post in enumerate(naver_posts[:8], 0):
-        likes = post['likes']
+
+    if not naver_posts:
+        st.caption("수집된 게시글이 없습니다.")
+        return
+
+    # 상위 4개만 한 줄 형태 컴팩트 카드로 렌더링
+    for post in naver_posts[:4]:
+        likes = post.get('likes', 0)
+        views = post.get('views', 0)
         badge_color = "#16a34a" if likes >= 20 else "#ca8a04" if likes >= 5 else THEME['text_sub']
-        with cols_post[idx % 2]:
-            st.markdown(
-                f"""<div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:8px; padding:9px 11px;
-                    margin-bottom:8px; border-left:3px solid {badge_color};">
-                <div style="font-size:12px; color:{THEME['text_main']}; line-height:1.4; margin-bottom:4px;">{post['title']}</div>
-                <div style="font-size:10.5px; color:{THEME['text_sub']};">👍 {post['likes']} &nbsp;·&nbsp; 👀 {post['views']}</div>
-                </div>""",
-                unsafe_allow_html=True
-            )
+        
+        st.markdown(
+            f"""<div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:6px; padding:7px 10px;
+                margin-bottom:6px; border-left:3px solid {badge_color}; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:11.5px; color:{THEME['text_main']}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;">
+                {post['title']}
+            </div>
+            <div style="font-size:10px; color:{THEME['text_sub']}; white-space:nowrap;">
+                👍 {likes} &nbsp;·&nbsp; 👀 {views}
+            </div>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+# 게시글 더보기
+    if len(naver_posts) > 4:
+        more_count = len(naver_posts) - 4
+        # 이모티콘 제거
+        more_label = f"게시글 더보기 ({more_count})"
+        
+        with st.expander(more_label, expanded=False):
+            for post in naver_posts[4:8]:
+                likes = post.get('likes', 0)
+                views = post.get('views', 0)
+                st.markdown(
+                    f"""<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid {THEME['border']};">
+                    <span style="font-size:11.5px; color:{THEME['text_main']}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;">{post['title']}</span>
+                    <span style="font-size:10px; color:{THEME['text_sub']};">👍 {likes} · 👀 {views}</span>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
 
 def render_fundamental_stats(fundamentals):
     items = [

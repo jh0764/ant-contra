@@ -105,22 +105,65 @@ def render_fomo_panel(fomo_data):
 def render_indicator_group(keys, obj_indicators, group_label=None):
     if group_label:
         st.markdown(f"<p style='font-size:11px; color:{THEME['text_sub']}; font-weight:700; margin:8px 0 4px 2px;'>{group_label}</p>", unsafe_allow_html=True)
+    
+    green_items = []
+    other_items = []
+
+    # 지표 상태별 분리 (green: 포착, 그 외: 중립/경고)
     for key, title in keys:
         ind = obj_indicators.get(key, {})
-        sty = STATUS_STYLE[ind.get("status", "yellow")]
+        status = ind.get("status", "yellow")
+        if status == "green":
+            green_items.append((key, title, ind))
+        else:
+            other_items.append((key, title, ind))
+
+# 1. 특이 매수 신호 포착 지표 우선 노출
+    if green_items:
+        st.markdown(f"<p style='font-size:12px; font-weight:700; color:{THEME['text_main']}; margin-bottom:6px;'>🔥 특이 신호 포착 ({len(green_items)}개)</p>", unsafe_allow_html=True)
+        for key, title, ind in green_items:
+            sty = STATUS_STYLE.get(ind.get("status", "yellow"), STATUS_STYLE["yellow"])
+            st.markdown(
+                f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
+                     border-radius:10px; padding:12px 14px; margin-bottom:6px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <div style="font-size:12px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
+                    <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:10px;
+                           padding:2px 8px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
+                  </div>
+                  <div style="font-size:13px; color:{THEME['text_main']}; font-weight:600; margin-bottom:2px;">{ind.get('label','—')}</div>
+                  <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
+                </div>""",
+                unsafe_allow_html=True
+            )
+    else:
+        # st.info 대신 글자 크기(12.5px)를 줄이고 1줄로 정돈한 커스텀 파란색 박스 적용
         st.markdown(
-            f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
-                 border-radius:10px; padding:12px 14px; margin-bottom:6px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <div style="font-size:12px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
-                <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:10px;
-                       padding:2px 8px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
-              </div>
-              <div style="font-size:13px; color:{THEME['text_main']}; font-weight:600; margin-bottom:2px;">{ind.get('label','—')}</div>
-              <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
+            f"""<div style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:8px; padding:9px 12px; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:13px;">💡</span>
+                <span style="font-size:12.5px; font-weight:600; color:#0369a1; white-space:nowrap;">현재 특이 패닉/과매도 신호가 감지되지 않았습니다. (전반적 중립 상태)</span>
             </div>""",
             unsafe_allow_html=True
         )
+
+# 관망/중립 지표 아코디언 (Streamlit 기본 expander + 더보기 문구)
+    if other_items:
+        # 문구 수정: "더보기" 명시
+        expander_label = f"기타 관망/중립 지표 더보기 ({len(other_items)})"
+        
+        with st.expander(expander_label, expanded=False):
+            for key, title, ind in other_items:
+                sty = STATUS_STYLE.get(ind.get("status", "yellow"), STATUS_STYLE["yellow"])
+                st.markdown(
+                    f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']}; border-radius:10px; padding:10px 12px; margin-bottom:6px;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                        <div style="font-size:11.5px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
+                        <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:9.5px; padding:1px 6px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
+                      </div>
+                      <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('label','—')}</div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
 
 def render_risk_card(risk_levels):
     if not risk_levels:

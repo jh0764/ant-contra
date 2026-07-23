@@ -43,6 +43,61 @@ if "home" in st.query_params:
 
 st.markdown(f"""
 <style>
+/* 아코디언 박스 배경 및 테두리 완전히 제거 */
+div[data-testid="stExpander"] {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+}}
+
+/* 2. 아코디언 버튼(summary) 클릭/포커스/open 시 생성되는 겉 테두리 제거 */
+div[data-testid="stExpander"] > details > summary,
+div[data-testid="stExpander"] > details > summary:focus,
+div[data-testid="stExpander"] > details > summary:focus-visible,
+div[data-testid="stExpander"] > details > summary:active,
+div[data-testid="stExpander"] > details[open] > summary {{
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 6px 0px !important;
+    font-family: 'Pretendard', -apple-system, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #4b5563 !important;
+}}
+
+/* 아코디언 헤더(요약 라벨) 폰트, 색상, 굵기 설정 */
+div[data-testid="stExpander"] > details > summary {{
+    background: transparent !important;
+    border: none !important;
+    padding: 6px 2px !important;
+    font-family: 'Pretendard', -apple-system, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #4b5563 !important; /* 이미지와 동일한 깔끔한 다크 그레이 */
+}}
+
+/* 호버 시 폰트 색상 */
+div[data-testid="stExpander"] > details > summary:hover {{
+    color: #111827 !important;
+}}
+
+div[data-testid="stExpander"] > details {{
+    border: none !important;
+}}
+
+/* 아코디언 내부 테두리 및 배경 제거 */
+div[data-testid="stExpander"] div[data-testid="stVerticalBlock"] {{
+    padding: 4px 0px !important;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""
+<style>
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 html, body, [class*="css"] {{ font-family: 'Pretendard', -apple-system, sans-serif; }}
 .stApp {{ background-color: {THEME['bg']}; }}
@@ -314,7 +369,7 @@ try:
         render_signal_summary(obj_indicators)
         render_fomo_panel(fomo_data)
         st.markdown("---")
-        render_community_tab(naver_posts, ai_reason)
+        render_community_tab(naver_posts, ai_reason, ticker_input)
 
 except Exception as e:
     st.error(f"⚠️ 대시보드 로드 중 치명적인 문제가 발생했습니다. (에러: {e})")

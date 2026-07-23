@@ -15,6 +15,7 @@ from core.fundamentals import get_fundamental_data
 from core.market_index import get_market_index_series, calculate_rs_indicator
 from core.risk_levels import calculate_risk_levels
 from core.scanner import run_fear_scanner
+from core.score_tracker import record_and_get_delta
 
 from ui.scanner_panel import render_fear_scanner
 from ui.landing import render_landing
@@ -254,6 +255,7 @@ try:
     final_scream_score, scream_tier = calculate_final_score(
         obj_indicators, community_raw, is_kosdaq, fomo_data["score"]
     )
+    score_delta = record_and_get_delta(ticker_input, final_scream_score)
     risk_levels = calculate_risk_levels(close_cleaned, high_cleaned, low_cleaned, current_price)
     entry = get_entry_signal(obj_indicators, final_scream_score, risk_levels)
         # 가격 기반 / 수급 기반 그룹 헤더로 구분
@@ -301,7 +303,7 @@ try:
     with col_side:
         render_entry_card(entry)
         render_risk_card(risk_levels)
-        render_gauge_and_tier(final_scream_score, scream_tier)
+        render_gauge_and_tier(final_scream_score, scream_tier, score_delta)
         render_score_metrics(community_raw, objective_score)
         render_signal_summary(obj_indicators)
         render_fomo_panel(fomo_data)

@@ -18,14 +18,24 @@ def render_entry_card(entry):
             </div>"""
         )
     
-def render_gauge_and_tier(final_scream_score, scream_tier):
+def render_gauge_and_tier(final_scream_score, scream_tier, score_delta=None):
     render_wave_gauge(final_scream_score)
     tier_label, tier_color, tier_desc = scream_tier
+
+    delta_html = ""
+    if score_delta is not None and score_delta != 0:
+        d_color = "#DC2626" if score_delta > 0 else "#3182f6"
+        d_arrow = "▲" if score_delta > 0 else "▼"
+        delta_html = f'<div style="margin-top:4px;"><span style="font-size:11px; color:{d_color}; font-weight:700;">{d_arrow} 전일 대비 {abs(score_delta)}점</span></div>'
+    elif score_delta == 0:
+        delta_html = f'<div style="margin-top:4px;"><span style="font-size:11px; color:{THEME["text_sub"]};">전일과 동일</span></div>'
+
     html_block(f"""
 <div style="text-align:center; background:{THEME['surface']}; border:1px solid {tier_color}33;
  border-radius:8px; padding:8px; margin:10px 0 10px 0;">
 <span style="color:{tier_color}; font-size:15px; font-weight:700;">{tier_label}</span><br>
 <span style="color:{THEME['text_sub']}; font-size:10.5px;">{tier_desc}</span>
+{delta_html}
 </div>
 """)
 

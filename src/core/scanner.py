@@ -41,5 +41,5 @@ def run_fear_scanner(top_n=10):
         except Exception:
             continue
 
-    results.sort(key=lambda r: r["score"], reverse=True)
+    results.sort(key=lambda r: (r["score"], abs(r["change_pct"])), reverse=True)
     return results[:top_n]

@@ -4,7 +4,8 @@ from constants import THEME, PRICE_COLOR
 from ui.common import html_block
 
 def render_fear_scanner(results, krx_listing):
-    st.markdown(f"<div style='font-size:16px; font-weight:800; color:{THEME['text_main']}; margin-bottom:8px;'>🔥 오늘의 공포 TOP {len(results)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:16px; font-weight:800; color:{THEME['text_main']}; margin-bottom:2px;'>🔥 오늘의 공포 TOP {len(results)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:10.5px; color:{THEME['text_sub']}; margin-bottom:8px;'>시가총액 상위 30종목 대상 스캔 결과입니다</div>", unsafe_allow_html=True)
 
     if not results:
         st.info("스캔 결과를 불러오지 못했습니다.")

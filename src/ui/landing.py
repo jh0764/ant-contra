@@ -1,9 +1,6 @@
 import streamlit as st
 from constants import THEME
 
-import streamlit as st
-from constants import THEME
-
 
 def render_landing():
     st.markdown(f"""

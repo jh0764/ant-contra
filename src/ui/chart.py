@@ -3,7 +3,6 @@ import streamlit.components.v1 as components
 import plotly.graph_objects as go
 from constants import PRICE_COLOR, THEME, ACCENT
 import streamlit as st
-from ui.common import html_block
 import pandas as pd
 from ui.common import html_block, render_tab_group, render_flex_row
 
@@ -128,19 +127,19 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 const parts = dstr.split(".");
                 return parts.length === 3 ? `${{parts[1]}}/${{parts[2]}}` : dstr;
             }}
-            
+
             function fmtPriceCompact(price) {{
             if (price >= 100000000) return (price / 100000000).toFixed(price >= 1000000000 ? 1 : 2) + "억원";
             if (price >= 10000) return Math.round(price / 10000).toLocaleString() + "만원";
             return Math.round(price).toLocaleString() + "원";
             }}
-            
+
             function computeLayout() {{
                 const rect = svg.getBoundingClientRect();
                 W = Math.max(1, rect.width);
                 H = Math.max(1, rect.height);
                 svg.setAttribute("viewBox", `0 0 ${{W}} ${{H}}`);
-                
+
                 const measure = el("text", {{ "font-size": "12.5", "font-weight": "500" }});
                 measure.style.visibility = "hidden";
                 measure.textContent = fmtPriceCompact(minP).length > fmtPriceCompact(maxP).length
@@ -151,7 +150,7 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 const edgeMargin = 2;   // 화면 왼쪽 끝과 라벨 사이 최소 여백 (이 값만 줄이면 됨)
                 const labelGap = 12;    // 라벨과 그래프 시작선 사이 간격 (고정)
                 padX = Math.ceil(labelWidth) + labelGap + edgeMargin;
-                
+
                 priceTop = padTop;
                 volBottom = H - padBottomChart - 16;
                 volTop = volBottom - Math.max(40, H * 0.16);
@@ -319,7 +318,7 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
         """
 
     components.html(chart_html, height=420)
-    
+
 def render_candle_chart(df, key_prefix="candle"):
     display_df = df.reset_index(drop=True)
     n = len(display_df)
@@ -364,8 +363,6 @@ def render_candle_chart(df, key_prefix="candle"):
     cloud_bull_b = span_b.where(span_a >= span_b)
     cloud_bear_a = span_a.where(span_a < span_b)
     cloud_bear_b = span_b.where(span_a < span_b)
-
-
 
     fig = go.Figure()
 

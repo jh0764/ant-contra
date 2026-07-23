@@ -19,11 +19,11 @@ from core.score_tracker import record_and_get_delta
 
 from ui.scanner_panel import render_fear_scanner
 from ui.landing import render_landing
-from ui.chart import render_stock_chart, render_candle_chart 
+from ui.chart import render_stock_chart, render_candle_chart
 from ui.main_panel import render_price_info, render_community_tab, render_fundamental_stats
 from ui.sidebar_cards import (
     render_entry_card, render_gauge_and_tier, render_score_metrics,
-    render_signal_summary, render_fomo_panel, render_indicator_group, 
+    render_signal_summary, render_fomo_panel, render_indicator_group,
     render_risk_card
 )
 from ui.ticker_badge import render_company_header
@@ -40,10 +40,11 @@ if "home" in st.query_params:
     st.session_state.pop("dashboard_ready", None)
     st.query_params.clear()
     st.rerun()
-st.markdown("""
+
+st.markdown(f"""
 <style>
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
-html, body, [class*="css"] { font-family: 'Pretendard', -apple-system, sans-serif; }
+html, body, [class*="css"] {{ font-family: 'Pretendard', -apple-system, sans-serif; }}
 .stApp {{ background-color: {THEME['bg']}; }}
 div[data-baseweb="tab-list"] {{
     gap:6px; background:{THEME['border']}; padding:5px; border-radius:12px;
@@ -60,6 +61,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 }}
 div[data-baseweb="tab-highlight"] {{ display:none; }}
 div[data-baseweb="tab-border"] {{ display:none; }}
+</style>
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
@@ -222,18 +224,18 @@ is_kosdaq = (market_suffix == ".KQ")
 try:
     if df.empty:
         raise ValueError("데이터를 찾을 수 없습니다.")
-        
+
     df = df.reset_index()
     dates_cleaned = df['Date'].squeeze()
     close_cleaned = df['Close'].squeeze()
     dates_korean = pd.to_datetime(dates_cleaned).dt.strftime('%Y.%m.%d')
-    
+
     current_price = int(close_cleaned.iloc[-1])
     prev_price = int(close_cleaned.iloc[-2])
     change_pct = ((current_price - prev_price) / prev_price) * 100
-    
+
     high_cleaned = df['High'].squeeze() if 'High' in df.columns else None
-    low_cleaned  = df['Low'].squeeze()  if 'Low'  in df.columns else None    
+    low_cleaned  = df['Low'].squeeze()  if 'Low'  in df.columns else None
     volume_series = df['Volume'].squeeze() if 'Volume' in df.columns else pd.Series(dtype=float)
 
     naver_posts = get_naver_discussion_by_likes(ticker_input)
@@ -246,7 +248,12 @@ try:
 
     foreign_data = get_foreign_net_buying(ticker_input)
     news_data = get_news_vacuum(ticker_input)
-    index_series = get_market_index_series(is_kosdaq)
+
+    # 수급/뉴스 스크래핑 실패 시 신뢰도 저하 경고
+    if "error" in foreign_data or "error" in news_data:
+        st.caption("⚠️ 일부 수급/뉴스 데이터를 실시간으로 가져오지 못해 해당 지표의 신뢰도가 낮을 수 있습니다.")
+
+    index_series, _idx_err = get_market_index_series(is_kosdaq)
     rs_data = calculate_rs_indicator(close_cleaned, index_series)
     obj_indicators, objective_score = calculate_objective_indicators(
         close_cleaned, volume_series, foreign_data, news_data, is_kosdaq, high_cleaned, low_cleaned, rs_data
@@ -258,12 +265,12 @@ try:
     score_delta = record_and_get_delta(ticker_input, final_scream_score)
     risk_levels = calculate_risk_levels(close_cleaned, high_cleaned, low_cleaned, current_price)
     entry = get_entry_signal(obj_indicators, final_scream_score, risk_levels)
-        # 가격 기반 / 수급 기반 그룹 헤더로 구분
+    # 가격 기반 / 수급 기반 그룹 헤더로 구분
     price_keys = [
         ("rsi",      "📈 RSI (14일)"),
         ("bb",       "〰️ 볼린저 밴드"),
         ("w52",      "📉 52주 신저가"),
-        ("drawdown", "📉 고점 대비 낙폭"),  # 신규
+        ("drawdown", "📉 고점 대비 낙폭"),
         ("ichimoku", "☁️ 일목균형표"),
         ("rs",       "🏁 시장대비 상대강도"),
         ]
@@ -279,7 +286,6 @@ try:
     with col_main:
         render_company_header(selected_company, ticker_input, sector)
         chart_mode = render_tab_group(["라인", "캔들"], key="chart_mode_toggle", margin_bottom="-10px")
-
 
         if chart_mode == "라인":
             with st.container(border=True, key="line_chart_box"):
@@ -308,8 +314,8 @@ try:
         render_signal_summary(obj_indicators)
         render_fomo_panel(fomo_data)
         st.markdown("---")
-        render_community_tab(naver_posts)
-        
+        render_community_tab(naver_posts, ai_reason)
+
 except Exception as e:
     st.error(f"⚠️ 대시보드 로드 중 치명적인 문제가 발생했습니다. (에러: {e})")
     st.exception(e)

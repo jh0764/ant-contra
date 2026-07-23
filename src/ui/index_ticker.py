@@ -16,12 +16,13 @@ def _build_sparkline_svg(series, color, width=100, height=32):
 def render_index_ticker():
     cols = st.columns(2)
     for col, is_kosdaq, label in [(cols[0], False, "코스피"), (cols[1], True, "코스닥")]:
-        series = get_market_index_series(is_kosdaq)
+        series, err = get_market_index_series(is_kosdaq)
         with col:
             if series is None or len(series) < 2:
                 html_block(f"""
 <div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:10px; padding:10px 14px;">
-<span style="font-size:11.5px; color:{THEME['text_sub']};">{label} — 데이터 불러오기 실패</span>
+<span style="font-size:11.5px; color:{THEME['text_sub']};">{label} — 데이터 불러오기 실패 ({err})</span>
+</div>
 </div>
 """)
                 continue

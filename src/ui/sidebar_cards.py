@@ -17,7 +17,7 @@ def render_entry_card(entry):
             </div>
             </div>"""
         )
-    
+
 def render_gauge_and_tier(final_scream_score, scream_tier, score_delta=None):
     render_wave_gauge(final_scream_score)
     tier_label, tier_color, tier_desc = scream_tier
@@ -39,9 +39,13 @@ def render_gauge_and_tier(final_scream_score, scream_tier, score_delta=None):
 </div>
 """)
 
-def render_score_metrics(community_raw, objective_score):
-    col1, col2 = st.columns(2)
-    for col, label, value in [(col1, "커뮤니티", community_raw), (col2, "객관지표", objective_score)]:
+def render_score_metrics(community_raw, objective_score, community_weighted=None):
+    items = [("커뮤니티", community_raw), ("객관지표", objective_score)]
+    if community_weighted is not None:
+        items.append(("커뮤니티 반영값", community_weighted))
+
+    cols = st.columns(len(items))
+    for col, (label, value) in zip(cols, items):
         with col:
             html_block(f"""
 <div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:10px; padding:12px; text-align:center;">

@@ -21,8 +21,9 @@ def calculate_risk_levels(close_series, high_series, low_series, current_price):
         fib_618 = high - diff * 0.618  # 하단 지지 후보
         fib_382 = high - diff * 0.382  # 상단 저항 후보
 
+        # 손절 후보 중 현재가에 더 가까운(타이트한) 라인을 채택 → R:R 산출 시 손실 과대평가 방지
         stop_candidates = [c for c in [bb_lower, fib_618] if c > 0 and c < current_price]
-        stop_loss = (min(stop_candidates) if stop_candidates else current_price * 0.93) - atr14 * 0.5
+        stop_loss = (max(stop_candidates) if stop_candidates else current_price * 0.93) - atr14 * 0.5
 
         target_candidates = [c for c in [bb_mid, fib_382, bb_upper] if c > current_price]
         target1 = min(target_candidates) if target_candidates else current_price * 1.05

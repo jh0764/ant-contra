@@ -41,9 +41,14 @@ def render_price_info(current_price, change_pct, ant_refund_line, fib, volatilit
 
     if volatility_warning:
         st.warning(volatility_warning)
-        
-def render_community_tab(naver_posts):
+
+def render_community_tab(naver_posts, ai_reason=None):
     st.markdown(f"<p style='font-size:14px; font-weight:700; color:{THEME['text_main']};'>실시간 주주 비명소리</p>", unsafe_allow_html=True)
+    if ai_reason:
+        st.markdown(
+            f"<p style='font-size:11.5px; color:{THEME['text_sub']}; margin-top:-4px; margin-bottom:8px;'>{ai_reason}</p>",
+            unsafe_allow_html=True
+        )
     cols_post = st.columns(2)
     for idx, post in enumerate(naver_posts[:8], 0):
         likes = post['likes']

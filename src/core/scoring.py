@@ -1,6 +1,3 @@
-import requests
-from bs4 import BeautifulSoup
-import streamlit as st
 from core.naver_scraper import _fetch_frgn_rows
 from constants import (
     FOMO_HOT_THRESHOLD, SCORE_NEAR_HIGH_W52, SCORE_NEAR_LOW_W52,
@@ -118,7 +115,7 @@ def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
     adj = _compute_score_adjustment(flags, community_raw)
     kosdaq_adj = SCORE_KOSDAQ_ADJ if is_kosdaq else 0
     final_scream_score = int(max(SCORE_FINAL_MIN, min(SCORE_FINAL_MAX, base + adj + kosdaq_adj)))
-    
+
     # 임계값 구간 판정 텍스트 (게이지 아래 표시용)
     if final_scream_score >= 85:
         scream_tier = ("🔥 극단 공포", "#dc2626", "역발상 매수 최적 구간 — 군중 공포 극대화")
@@ -131,7 +128,7 @@ def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
     else:
         scream_tier = ("🚀 탐욕 과열", "#16a34a", "역발상 매도 고려 — FOMO 극대화")
 
-    return final_scream_score, scream_tier 
+    return final_scream_score, scream_tier
 
 
 def get_entry_signal(obj_indicators, final_scream_score, risk_levels=None):

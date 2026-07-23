@@ -1,18 +1,38 @@
 import streamlit as st
-import yfinance as yf
+import FinanceDataReader as fdr
 import pandas as pd
+import yfinance as yf
 
 @st.cache_data(ttl=600, show_spinner=False)
 def get_market_index_series(is_kosdaq: bool):
-    ticker = "^KQ11" if is_kosdaq else "^KS11"
+    # 개별 종목 가격 데이터(core.price_data)와 동일한 FDR 소스로 통일
+    # → yfinance와의 거래일/휴장일 정렬 불일치로 인한 RS(상대강도) 왜곡 방지
+    code = "KQ11" if is_kosdaq else "KS11"
     try:
-        data = yf.download(ticker, period="3mo", interval="1d", progress=False, auto_adjust=True)
+        data = fdr.DataReader(
+            code,
+            start=(pd.Timestamp.now() - pd.Timedelta(days=100)).strftime("%Y-%m-%d")
+        )
+        if not data.empty and len(data) > 2:
+            return data["Close"].dropna(), None
+    except Exception as e1:  
+        fdr_error = str(e1)
+    else:
+        fdr_error = "빈 데이터 반환"   
+        
+    # 2차: FDR 실패 시 yfinance 폴백 (지수 카드 자체가 비는 것 방지)
+    yf_code = "^KQ11" if is_kosdaq else "^KS11"
+    try:
+        data = yf.download(yf_code, period="3mo", interval="1d", progress=False, auto_adjust=True)
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
-        return data["Close"].dropna() if not data.empty else None
-    except Exception:
-        return None
-
+        if not data.empty:
+            return data["Close"].dropna(), None
+        yf_error = "빈 데이터 반환"
+    except Exception as e2:    
+        yf_error = str(e2)
+    return None, f"FDR: {fdr_error} / yfinance: {yf_error}"    
+            
 def calculate_rs_indicator(close_series, index_series, lookback=20):
     try:
         if index_series is None or len(close_series) < lookback or len(index_series) < lookback:

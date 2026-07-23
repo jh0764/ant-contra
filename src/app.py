@@ -26,12 +26,19 @@ from ui.sidebar_cards import (
     render_risk_card
 )
 from ui.ticker_badge import render_company_header
+from ui.index_ticker import render_index_ticker
 
 from constants import THEME, ACCENT
 from streamlit_searchbox import st_searchbox
 
 # 1. Page Configuration
 st.set_page_config(layout="wide", page_title="개미반대로 (Ant-Contra)")
+
+if "home" in st.query_params:
+    st.session_state.pop("last_selected", None)
+    st.session_state.pop("dashboard_ready", None)
+    st.query_params.clear()
+    st.rerun()
 st.markdown("""
 <style>
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
@@ -125,9 +132,32 @@ div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p {{
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown(f"""
-<div style="font-size:22px; font-weight:800; color:{THEME['text_main']};">개미반대로</div>
-<div style="font-size:12.5px; color:{THEME['text_sub']}; margin-bottom:16px;">네이버 실시간 추천 인기글 기반 역발상 스캐너</div>
+is_detail_view = bool(st.session_state.get("dashboard_ready")) or ("stock" in st.query_params)
+
+with st.container(key="app_header_top"):
+    st.markdown(
+        "<style>div.st-key-app_header_top [data-testid='stElementContainer']{margin-bottom:0 !important;}</style>",
+        unsafe_allow_html=True
+    )
+    st.markdown(f"""
+<a href="?home=1" target="_self" style="text-decoration:none;">
+<div style="font-size:20px; font-weight:800; color:{THEME['text_main']}; margin-bottom:6px; width:fit-content; cursor:pointer;">개미반대로</div>
+</a>
+""", unsafe_allow_html=True)
+
+    if not is_detail_view:
+        st.markdown(f"""
+<div style="margin-bottom:2px;">
+<div style="background:{ACCENT}14; border-radius:999px; padding:7px 16px; margin-bottom:4px;
+     display:inline-flex; align-items:center; gap:6px; width:fit-content;">
+<span style="font-size:11.5px; color:{THEME['text_main']}; font-weight:600; white-space:nowrap;">
+⚡ 실시간 여론 × 기술적 지표로 군중의 공포를 찾는 역발상 스캐너
+</span>
+</div>
+<div style="font-size:10.5px; color:{THEME['text_sub']}; padding-left:2px;">
+😱 통합 공포지수 &nbsp;·&nbsp; 📊 RSI·볼린저·수급 분석 &nbsp;·&nbsp; 🔥 개미 FOMO 탐지 &nbsp;·&nbsp; 💬 네이버 실시간 여론
+</div>
+</div>
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
@@ -138,14 +168,6 @@ div[data-testid="stPlotlyChart"] {{
 }}
 </style>
 """, unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-div.st-key-line_chart_box { padding: 8px 14px 4px 14px !important; }
-</style>
-""", unsafe_allow_html=True)
-
-
 
 KRX_LISTING, KRX_SOURCE, KRX_ERROR = load_krx_listing()
 
@@ -162,6 +184,9 @@ with st.container(border=True):
         key="stock_searchbox",
         placeholder="종목명 또는 종목코드 입력 (예: 삼성전자, 005930)"
     )
+
+if not is_detail_view:
+    render_index_ticker()
 
 # 유효한 선택이면 저장, 아니면 마지막 저장값 사용
 if selected_item and "(" in selected_item:

@@ -147,26 +147,26 @@ def get_entry_signal(obj_indicators, final_scream_score, risk_levels=None):
     rr_poor         = risk_levels is not None and risk_levels["rr_ratio"] < 1.5 and risk_levels["rr_ratio"] > 0
 
     if is_fear_zone and is_fg_turning and is_obv_bullish and not rr_poor:
-        return {"level": "🟢 진입 적극 고려", "color": "#22c55e",
+        return {"level": "진입 적극 고려", "color": "#22c55e",
                 "desc": "공포 + 외국인 전환 + OBV 매집 + 손익비 양호. 최적 타점",
                 "action": "분할매수 1차 진입"}
     elif is_fear_zone and is_fg_turning and is_obv_bullish and rr_poor:
-        return {"level": "🟡 조건부 진입", "color": "#eab308",
+        return {"level": "조건부 진입", "color": "#eab308",
                 "desc": "수급 신호는 양호하나 손익비 미흡 — 목표가 대비 리스크 과다",
                 "action": "손절가 재점검 후 소량 진입"}
     elif is_fear_zone and (is_fg_turning or is_obv_bullish) and is_panic_done:
-        return {"level": "🟡 조건부 진입", "color": "#eab308",
+        return {"level": "조건부 진입", "color": "#eab308",
                 "desc": "공포 + 수급 일부 전환. 나머지 신호 대기하며 소량 선진입",
                 "action": "소량 선매수 / 나머지 신호 대기"}
     elif is_fear_zone and is_fg_selling and is_obv_bearish:
-        return {"level": "🔴 진입 보류", "color": "#ef4444",
+        return {"level": "진입 보류", "color": "#ef4444",
                 "desc": "공포 구간이나 외국인 이탈·OBV 분산 진행 중",
                 "action": "예수금 보유. 전환 신호 재확인"}
     elif not is_fear_zone:
-        return {"level": "⚫ 관망", "color": "#475569",
+        return {"level": "관망", "color": "#475569",
                 "desc": "공포 구간 미진입. 역발상 타점 아님",
                 "action": "대기"}
     else:
-        return {"level": "🟡 대기", "color": "#ca8a04",
+        return {"level": "대기", "color": "#ca8a04",
                 "desc": "공포 감지. 수급 전환 신호 미확인",
                 "action": "알림 설정 후 대기"}

@@ -5,18 +5,26 @@ from ui.gauge import render_wave_gauge
 from constants import STATUS_STYLE, THEME, PRICE_COLOR
 
 def render_entry_card(entry):
+    entry_color = entry.get('color', '#ca8a04')
+    entry_level = entry.get('level', '대기')
+    
     html_block(
-            f"""<div style="background:{THEME['surface']}; border:1px solid {entry['color']};
-                border-radius:10px; padding:14px 16px; margin:0 0 14px 0;">
-            <div style="font-size:15px; font-weight:700; color:{entry['color']};
-                margin-bottom:4px;">{entry['level']}</div>
-            <div style="font-size:12px; color:{THEME['text_sub']}; margin-bottom:10px;">{entry['desc']}</div>
-            <div style="background:{entry['color']}18; border-radius:6px; padding:8px 12px;
-                font-size:12px; color:{entry['color']}; font-weight:700;">
-                → {entry['action']}
-            </div>
-            </div>"""
-        )
+        f"""<div style="background:{THEME['surface']}; border:1px solid {entry_color};
+            border-radius:10px; padding:14px 16px; margin:0 0 14px 0;">
+        <!-- 상단 헤더: 제목과 우측 알약 배지 (모든 신호 상태 동적 반영) -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-size:14px; font-weight:700; color:{THEME['text_main']};">진입 판단</span>
+            <span style="background:{entry_color}; color:#ffffff; font-size:10.5px; padding:2px 8px; border-radius:20px; font-weight:700; white-space:nowrap;">{entry_level}</span>
+        </div>
+        <!-- 본문 설명 -->
+        <div style="font-size:12px; color:{THEME['text_sub']}; margin-bottom:10px;">{entry.get('desc', '')}</div>
+        <!-- 하단 행동 가이드 박스 -->
+        <div style="background:{entry_color}18; border-radius:6px; padding:8px 12px;
+            font-size:12px; color:{entry_color}; font-weight:700;">
+            → {entry.get('action', '')}
+        </div>
+        </div>"""
+    )
 
 def render_gauge_and_tier(final_scream_score, scream_tier, score_delta=None):
     render_wave_gauge(final_scream_score)
@@ -189,3 +197,5 @@ def render_risk_card(risk_levels):
 </div>
 </div>
 """)
+    
+    

@@ -2,29 +2,21 @@ import streamlit as st
 from constants import STATUS_STYLE, THEME
 from ui.common import html_block
 from ui.gauge import render_wave_gauge
-from constants import STATUS_STYLE, THEME, PRICE_COLOR
+from constants import STATUS_STYLE, THEME, PRICE_COLOR, ACCENT
 
 def render_entry_card(entry):
-    entry_color = entry.get('color', '#ca8a04')
-    entry_level = entry.get('level', '대기')
-    
     html_block(
-        f"""<div style="background:{THEME['surface']}; border:1px solid {entry_color};
-            border-radius:10px; padding:14px 16px; margin:0 0 14px 0;">
-        <!-- 상단 헤더: 제목과 우측 알약 배지 (모든 신호 상태 동적 반영) -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-size:14px; font-weight:700; color:{THEME['text_main']};">진입 판단</span>
-            <span style="background:{entry_color}; color:#ffffff; font-size:10.5px; padding:2px 8px; border-radius:20px; font-weight:700; white-space:nowrap;">{entry_level}</span>
-        </div>
-        <!-- 본문 설명 -->
-        <div style="font-size:12px; color:{THEME['text_sub']}; margin-bottom:10px;">{entry.get('desc', '')}</div>
-        <!-- 하단 행동 가이드 박스 -->
-        <div style="background:{entry_color}18; border-radius:6px; padding:8px 12px;
-            font-size:12px; color:{entry_color}; font-weight:700;">
-            → {entry.get('action', '')}
-        </div>
-        </div>"""
-    )
+            f"""<div style="background:{THEME['surface']}; border:1px solid {entry['color']};
+                border-radius:10px; padding:14px 16px; margin:0 0 14px 0;">
+            <div style="font-size:15px; font-weight:700; color:{entry['color']};
+                margin-bottom:4px;">{entry['level']}</div>
+            <div style="font-size:12px; color:{THEME['text_sub']}; margin-bottom:10px;">{entry['desc']}</div>
+            <div style="background:{entry['color']}18; border-radius:6px; padding:8px 12px;
+                font-size:12px; color:{entry['color']}; font-weight:700;">
+                → {entry['action']}
+            </div>
+            </div>"""
+        )
 
 def render_gauge_and_tier(final_scream_score, scream_tier, score_delta=None):
     render_wave_gauge(final_scream_score)
@@ -47,13 +39,34 @@ def render_gauge_and_tier(final_scream_score, scream_tier, score_delta=None):
 </div>
 """)
 
-def render_score_metrics(community_raw, objective_score, community_weighted=None):
-    items = [("커뮤니티", community_raw), ("객관지표", objective_score)]
-    if community_weighted is not None:
-        items.append(("커뮤니티 반영값", community_weighted))
+def render_score_history_sparkline(history):
+    if not history or len(history) < 2:
+        return
+    values = [h["score"] for h in history]
+    dates = [h["date"] for h in history]
+    vmin, vmax = min(values), max(values)
+    vrange = (vmax - vmin) or 1
+    width, height = 260, 40
+    step = width / (len(values) - 1)
+    points = " ".join(
+        f"{i * step:.1f},{height - ((v - vmin) / vrange * height):.1f}"
+        for i, v in enumerate(values)
+    )
+    html_block(f"""
+<div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:10px; padding:10px 14px; margin:0 0 12px 0;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+<span style="font-size:11.5px; color:{THEME['text_sub']}; font-weight:700;">최근 {len(values)}거래일 점수 추이</span>
+<span style="font-size:10.5px; color:{THEME['text_sub']};">{dates[0]} ~ {dates[-1]}</span>
+</div>
+<svg width="100%" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none">
+<polyline points="{points}" fill="none" stroke="{ACCENT}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</div>
+""")
 
-    cols = st.columns(len(items))
-    for col, (label, value) in zip(cols, items):
+def render_score_metrics(community_raw, objective_score, weight_reduced=False):
+    col1, col2 = st.columns(2)
+    for col, label, value in [(col1, "커뮤니티", community_raw), (col2, "객관지표", objective_score)]:
         with col:
             html_block(f"""
 <div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:10px; padding:12px; text-align:center;">
@@ -61,6 +74,12 @@ def render_score_metrics(community_raw, objective_score, community_weighted=None
 <div style="font-size:24px; font-weight:800; color:{THEME['text_main']};">{int(value)}점</div>
 </div>
 """)
+    if weight_reduced:
+        st.markdown(f"""
+        <div style="font-size:8px; color:{THEME['text_sub']}; margin-top:4px; line-height:1.3; word-break:keep-all;">
+        ⚠️ 변동성 확대로 커뮤니티 지표가 최종 점수에 반영되는 비중이 자동 축소되었습니다
+        </div>
+        """, unsafe_allow_html=True)
 
 def render_signal_summary(obj_indicators):
     # ── 종합 판정 카드 (게이지 바로 아래) ────────────────────────
@@ -69,6 +88,8 @@ def render_signal_summary(obj_indicators):
         ("bb",       "〰️ 볼린저 밴드",     "가격"),
         ("w52",      "📉 52주 신저가",     "가격"),
         ("drawdown", "📉 고점낙폭", "가격"),  # 신규
+        ("trend",    "🪫 장기추세", "가격"),
+        ("candle",   "🕯️ 캔들패턴", "가격"),
         ("volume",   "🔊 거래량",          "수급"),
         ("foreign",  "🌍 외국인",          "수급"),
         ("obv", "📊 OBV 다이버전스", "수급")
@@ -110,27 +131,35 @@ def render_fomo_panel(fomo_data):
         </div>"""
     )
 
-def render_indicator_group(keys, obj_indicators, group_label=None):
+def render_indicator_group(keys, obj_indicators, group_label=None, only_signaled=False):
+    """
+    지표 그룹을 렌더링합니다.
+    - 포착된 신호(status == 'green'): 상단에 즉시 카드 형태로 노출
+    - 중립 및 미포착 지표(status != 'green'): 하단 아코디언(st.expander) 내부에 감싸서 표시
+    """
     if group_label:
-        st.markdown(f"<p style='font-size:11px; color:{THEME['text_sub']}; font-weight:700; margin:8px 0 4px 2px;'>{group_label}</p>", unsafe_allow_html=True)
-    
-    green_items = []
+        st.markdown(
+            f"<p style='font-size:11px; color:{THEME['text_sub']}; font-weight:700; margin:8px 0 4px 2px;'>{group_label}</p>",
+            unsafe_allow_html=True
+        )
+
+    signaled_items = []
     other_items = []
 
-    # 지표 상태별 분리 (green: 포착, 그 외: 중립/경고)
+    # 1. 포착 신호와 (중립/미포착) 지표 분류
     for key, title in keys:
         ind = obj_indicators.get(key, {})
         status = ind.get("status", "yellow")
+        
         if status == "green":
-            green_items.append((key, title, ind))
+            signaled_items.append((title, ind, status))
         else:
-            other_items.append((key, title, ind))
+            other_items.append((title, ind, status))
 
-# 1. 특이 매수 신호 포착 지표 우선 노출
-    if green_items:
-        st.markdown(f"<p style='font-size:12px; font-weight:700; color:{THEME['text_main']}; margin-bottom:6px;'>🔥 특이 신호 포착 ({len(green_items)}개)</p>", unsafe_allow_html=True)
-        for key, title, ind in green_items:
-            sty = STATUS_STYLE.get(ind.get("status", "yellow"), STATUS_STYLE["yellow"])
+    # 2. 포착된 주요 신호 카드 상단 즉시 노출
+    if signaled_items:
+        for title, ind, status in signaled_items:
+            sty = STATUS_STYLE.get(status, STATUS_STYLE["green"])
             st.markdown(
                 f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
                      border-radius:10px; padding:12px 14px; margin-bottom:6px;">
@@ -145,30 +174,29 @@ def render_indicator_group(keys, obj_indicators, group_label=None):
                 unsafe_allow_html=True
             )
     else:
-        # st.info 대신 글자 크기(12.5px)를 줄이고 1줄로 정돈한 커스텀 파란색 박스 적용
         st.markdown(
-            f"""<div style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:8px; padding:9px 12px; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                <span style="font-size:13px;">💡</span>
-                <span style="font-size:12.5px; font-weight:600; color:#0369a1; white-space:nowrap;">현재 특이 패닉/과매도 신호가 감지되지 않았습니다. (전반적 중립 상태)</span>
+            f"""<div style="background:{THEME['surface']}; border:1px dashed {THEME['border']};
+                 border-radius:10px; padding:12px; text-align:center; color:{THEME['text_sub']}; font-size:12px; margin-bottom:6px;">
+                현재 탭에서 포착된 매수/역발상 신호가 없습니다.
             </div>""",
             unsafe_allow_html=True
         )
 
-# 관망/중립 지표 아코디언 (Streamlit 기본 expander + 더보기 문구)
+    # 3. 중립 및 미포착 지표는 아코디언으로 감싸서 하단 배치
     if other_items:
-        # 문구 수정: "더보기" 명시
-        expander_label = f"기타 관망/중립 지표 더보기 ({len(other_items)})"
-        
-        with st.expander(expander_label, expanded=False):
-            for key, title, ind in other_items:
-                sty = STATUS_STYLE.get(ind.get("status", "yellow"), STATUS_STYLE["yellow"])
+        with st.expander(f"⚙️ 중립 및 미포착 지표 보기 ({len(other_items)}개)", expanded=False):
+            for title, ind, status in other_items:
+                sty = STATUS_STYLE.get(status, STATUS_STYLE["yellow"])
                 st.markdown(
-                    f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']}; border-radius:10px; padding:10px 12px; margin-bottom:6px;">
-                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-                        <div style="font-size:11.5px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
-                        <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:9.5px; padding:1px 6px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
+                    f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
+                         border-radius:10px; padding:12px 14px; margin-bottom:6px;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <div style="font-size:12px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
+                        <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:10px;
+                               padding:2px 8px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
                       </div>
-                      <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('label','—')}</div>
+                      <div style="font-size:13px; color:{THEME['text_main']}; font-weight:600; margin-bottom:2px;">{ind.get('label','—')}</div>
+                      <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
                     </div>""",
                     unsafe_allow_html=True
                 )
@@ -197,5 +225,3 @@ def render_risk_card(risk_levels):
 </div>
 </div>
 """)
-    
-    

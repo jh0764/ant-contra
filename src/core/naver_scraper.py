@@ -152,7 +152,48 @@ def get_foreign_net_buying(ticker_code):
         }
     except Exception as e:
         return {"error": str(e)}
-        
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_recent_news_headlines(ticker_code, limit=5):
+    """
+    종목 뉴스탭에서 최근 헤드라인 추출. 셀렉터는 네이버 금융 공개 구조 기준이며
+    페이지 마크업이 바뀌면 조용히 빈 리스트로 폴백됩니다(화면 깨짐 방지).
+    """
+    try:
+        url = f"https://finance.naver.com/item/news_news.naver?code={ticker_code}&page=1"
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Referer": f"https://finance.naver.com/item/main.naver?code={ticker_code}"
+        }
+        resp = requests.get(url, headers=headers, timeout=6)
+        content = resp.content
+        html = content.decode("euc-kr", errors="replace") if b"euc-kr" in content[:500].lower() else content.decode("utf-8", errors="replace")
+        soup = BeautifulSoup(html, "html.parser")
+
+        rows = soup.select("table.type5 tr")
+        headlines = []
+        for row in rows:
+            title_el = row.select_one("td.title a")
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            if not title:
+                continue
+            press_el = row.select_one("td.info")
+            date_el = row.select_one("td.date")
+            press = press_el.get_text(strip=True) if press_el else "—"
+            pub_date = date_el.get_text(strip=True) if date_el else "—"
+            href = title_el.get("href", "")
+            link = f"https://finance.naver.com{href}" if href.startswith("/") else (href or url)
+            headlines.append({"title": title, "press": press, "date": pub_date, "link": link})
+            if len(headlines) >= limit:
+                break
+        return headlines
+    except Exception:
+        return []
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def get_news_vacuum(ticker_code):
     try:

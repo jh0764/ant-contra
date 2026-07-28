@@ -67,6 +67,7 @@ def _extract_score_flags(obj_indicators, fomo_score):
         "is_rsi_cold":    rsi_val <= SCORE_RSI_COLD,
         "is_supply_fear": foreign_score >= SCORE_SUPPLY_FEAR_FOREIGN,
         "is_high_drawdown": drawdown_val >= SCORE_HIGH_DRAWDOWN,
+        "is_structural_downtrend": obj_indicators.get("trend", {}).get("is_structural_downtrend", False),
     }
 
 
@@ -116,6 +117,10 @@ def calculate_final_score(obj_indicators, community_raw, is_kosdaq, fomo_score):
     kosdaq_adj = SCORE_KOSDAQ_ADJ if is_kosdaq else 0
     final_scream_score = int(max(SCORE_FINAL_MIN, min(SCORE_FINAL_MAX, base + adj + kosdaq_adj)))
 
+    # 200일선 구조적 하락추세("떨어지는 칼날")면 아무리 단기 패닉이 세도 매수 최적구간까지는 못 가게 캡
+    if flags["is_structural_downtrend"]:
+        final_scream_score = min(final_scream_score, 55)
+
     # 임계값 구간 판정 텍스트 (게이지 아래 표시용)
     if final_scream_score >= 85:
         scream_tier = ("🔥 극단 공포", "#dc2626", "역발상 매수 최적 구간 — 군중 공포 극대화")
@@ -136,6 +141,7 @@ def get_entry_signal(obj_indicators, final_scream_score, risk_levels=None):
     obv     = obj_indicators.get("obv",     {})
     pvd     = obj_indicators.get("pvd",     {})
     rsi     = obj_indicators.get("rsi",     {})
+    trend   = obj_indicators.get("trend",   {})
 
     is_fear_zone    = final_scream_score >= 60
     is_fg_turning   = foreign.get("is_turning", False)
@@ -145,8 +151,13 @@ def get_entry_signal(obj_indicators, final_scream_score, risk_levels=None):
     is_panic_done   = pvd.get("score", 0) >= 12
     is_rsi_cold     = (rsi.get("value") or 50) <= 35
     rr_poor         = risk_levels is not None and risk_levels["rr_ratio"] < 1.5 and risk_levels["rr_ratio"] > 0
+    is_falling_knife = trend.get("is_structural_downtrend", False)
 
-    if is_fear_zone and is_fg_turning and is_obv_bullish and not rr_poor:
+    if is_falling_knife and is_fear_zone:
+        return {"level": "🔴 진입 보류", "color": "#ef4444",
+                "desc": "단기 공포는 감지되나 200일선 기준 구조적 하락추세 — 낙폭과대이지 눌림목 아님",
+                "action": "추세 전환(200일선 상향) 확인 전까지 관망"}
+    elif is_fear_zone and is_fg_turning and is_obv_bullish and not rr_poor:
         return {"level": "진입 적극 고려", "color": "#22c55e",
                 "desc": "공포 + 외국인 전환 + OBV 매집 + 손익비 양호. 최적 타점",
                 "action": "분할매수 1차 진입"}

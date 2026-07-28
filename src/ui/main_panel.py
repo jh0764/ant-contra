@@ -40,7 +40,12 @@ def render_price_info(current_price, change_pct, ant_refund_line, fib, volatilit
         """)
 
     if volatility_warning:
-        st.warning(volatility_warning)
+        st.markdown(
+            f"<div style='font-size:11px; color:{THEME['text_sub']}; background:#FEF3C7; "
+            f"border:1px solid #FDE68A; border-radius:6px; padding:6px 10px; margin-top:6px;'>"
+            f"⚠️ {volatility_warning}</div>",
+            unsafe_allow_html=True
+        )
 
 def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
 # 네이버 종목토론방 바로가기 URL 생성
@@ -107,6 +112,20 @@ def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
                     </div>""",
                     unsafe_allow_html=True
                 )
+
+def render_news_headlines(headlines):
+    if not headlines:
+        return
+    st.markdown(f"<p style='font-size:13px; font-weight:700; color:{THEME['text_main']}; margin:4px 0 6px 0;'>📰 최근 뉴스</p>", unsafe_allow_html=True)
+    for h in headlines:
+        st.markdown(
+            f"""<a href="{h['link']}" target="_blank" style="text-decoration:none;">
+            <div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:8px; padding:8px 12px; margin-bottom:6px;">
+            <div style="font-size:12px; color:{THEME['text_main']}; font-weight:600; line-height:1.4;">{h['title']}</div>
+            <div style="font-size:10px; color:{THEME['text_sub']}; margin-top:3px;">{h['press']} · {h['date']}</div>
+            </div></a>""",
+            unsafe_allow_html=True
+        )
 
 def render_fundamental_stats(fundamentals):
     items = [

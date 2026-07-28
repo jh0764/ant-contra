@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from core.candle_patterns import detect_patterns, score_patterns
 from constants import (
     RSI_OVERSOLD, RSI_WEAK_RECOVERY, RSI_OVERBOUGHT,
     BB_LOWER_NEAR_PCT, BB_UPPER_NEAR_PCT,
@@ -9,9 +10,9 @@ from constants import (
 )
 
 def calculate_objective_indicators(close_series, volume_series, foreign_data, news_data, is_kosdaq,
-                                    high_series=None, low_series=None, rs_data=None):
+                                    high_series=None, low_series=None, rs_data=None, open_series=None):
     results = {}
-    
+
     #RSI (14일)
     try:
         delta = close_series.diff()
@@ -110,6 +111,51 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
         results["drawdown"] = {"status": dd_status, "label": dd_label, "desc": dd_desc, "score": dd_score, "value": drawdown_pct}
     except Exception:
         results["drawdown"] = {"status": "yellow", "label": "낙폭 — 계산 불가", "desc": "데이터 부족", "score": 0, "value": 0}
+
+    # 장기추세 필터 (200일선 위치 + 200일선 기울기) — 눌림목 vs 낙폭과대(떨어지는 칼날) 구분
+    try:
+        if len(close_series) < 210:
+            raise ValueError("데이터 부족 (200일치 미만)")
+        ma200 = close_series.rolling(200).mean()
+        current = float(close_series.iloc[-1])
+        ma200_now = float(ma200.iloc[-1])
+        ma200_prev = float(ma200.iloc[-20])
+        slope_pct = (ma200_now - ma200_prev) / ma200_prev * 100
+        is_below_ma200 = current < ma200_now
+        is_ma_declining = slope_pct <= -0.5
+
+        if is_below_ma200 and is_ma_declining:
+            trend_status, trend_label = "red", f"200일선 하향 이탈 (기울기 {slope_pct:+.1f}%)"
+            trend_desc = "장기 추세 자체가 무너진 구간 — '떨어지는 칼날' 주의. 역발상 매수 근거 약함"
+            trend_score = -10
+        elif is_below_ma200 and not is_ma_declining:
+            trend_status, trend_label = "green", f"200일선 위/횡보 중 단기 이탈 (기울기 {slope_pct:+.1f}%)"
+            trend_desc = "장기 상승추세는 유지된 채 단기 조정 — 눌림목 성격, 역발상 신뢰도 높음"
+            trend_score = 10
+        elif not is_below_ma200 and is_ma_declining:
+            trend_status, trend_label = "yellow", f"200일선 하락 중, 현재가는 위 (기울기 {slope_pct:+.1f}%)"
+            trend_desc = "추세 전환 초기 또는 단기 반등 — 추가 확인 필요"
+            trend_score = 0
+        else:
+            trend_status, trend_label = "yellow", f"장기 상승추세 유지 (기울기 {slope_pct:+.1f}%)"
+            trend_desc = "구조적 강세 지속 중 — 공포 매수 국면 아님"
+            trend_score = -3
+
+        results["trend"] = {
+            "status": trend_status, "label": trend_label, "desc": trend_desc, "score": trend_score,
+            "is_structural_downtrend": (trend_status == "red"),
+        }
+    except Exception:
+        results["trend"] = {"status": "yellow", "label": "장기추세 — 계산 불가", "desc": "200일치 데이터 부족", "score": 0, "is_structural_downtrend": False}
+
+    # 캔들패턴 인식 (시가 데이터 필요, 없으면 스킵)
+    try:
+        if open_series is None:
+            raise ValueError("시가 데이터 없음")
+        patterns = detect_patterns(open_series, high_series, low_series, close_series)
+        results["candle"] = score_patterns(patterns)
+    except Exception:
+        results["candle"] = {"status": "yellow", "label": "캔들패턴 — 계산 불가", "desc": "시가 데이터 부족", "score": 0}
 
     #일목균형표 구름대 이탈
     try:
@@ -276,7 +322,7 @@ def calculate_objective_indicators(close_series, volume_series, foreign_data, ne
 
     if rs_data is not None:
         results["rs"] = rs_data
-    price_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["rsi", "bb", "w52", "ichimoku", "rs"])
+    price_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["rsi", "bb", "w52", "ichimoku", "rs", "trend", "candle"])
     supply_keys_score = sum(results.get(k, {}).get("score", 0) for k in ["volume", "foreign", "obv", "pvd"])
     news_score = results.get("news_vacuum", {}).get("score", 0)
 

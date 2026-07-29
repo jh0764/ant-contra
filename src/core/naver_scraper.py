@@ -155,7 +155,7 @@ def get_foreign_net_buying(ticker_code):
 
 
 @st.cache_data(ttl=600, show_spinner=False)
-def get_recent_news_headlines(ticker_code, limit=5):
+def get_recent_news_headlines(ticker_code, limit=3):
     """
     종목 뉴스탭에서 최근 헤드라인 추출. 셀렉터는 네이버 금융 공개 구조 기준이며
     페이지 마크업이 바뀌면 조용히 빈 리스트로 폴백됩니다(화면 깨짐 방지).
@@ -173,6 +173,7 @@ def get_recent_news_headlines(ticker_code, limit=5):
 
         rows = soup.select("table.type5 tr")
         headlines = []
+        seen_titles = set()
         for row in rows:
             title_el = row.select_one("td.title a")
             if not title_el:
@@ -180,6 +181,9 @@ def get_recent_news_headlines(ticker_code, limit=5):
             title = title_el.get_text(strip=True)
             if not title:
                 continue
+            if title in seen_titles:
+                continue
+            seen_titles.add(title)
             press_el = row.select_one("td.info")
             date_el = row.select_one("td.date")
             press = press_el.get_text(strip=True) if press_el else "—"

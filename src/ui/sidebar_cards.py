@@ -132,74 +132,153 @@ def render_fomo_panel(fomo_data):
     )
 
 def render_indicator_group(keys, obj_indicators, group_label=None, only_signaled=False):
-    """
-    지표 그룹을 렌더링합니다.
-    - 포착된 신호(status == 'green'): 상단에 즉시 카드 형태로 노출
-    - 중립 및 미포착 지표(status != 'green'): 하단 아코디언(st.expander) 내부에 감싸서 표시
-    """
     if group_label:
         st.markdown(
             f"<p style='font-size:11px; color:{THEME['text_sub']}; font-weight:700; margin:8px 0 4px 2px;'>{group_label}</p>",
             unsafe_allow_html=True
         )
 
-    signaled_items = []
-    other_items = []
-
-    # 1. 포착 신호와 (중립/미포착) 지표 분류
+    signaled_items, other_items = [], []
     for key, title in keys:
         ind = obj_indicators.get(key, {})
         status = ind.get("status", "yellow")
-        
-        if status == "green":
-            signaled_items.append((title, ind, status))
-        else:
-            other_items.append((title, ind, status))
+        (signaled_items if status == "green" else other_items).append((title, ind, status))
 
-    # 2. 포착된 주요 신호 카드 상단 즉시 노출
+    def _render_card_html(title, ind, status, size="lg"):
+        sty = STATUS_STYLE.get(status, STATUS_STYLE.get("yellow", {}))
+        icon_char, _, title_text = title.partition(" ")
+        if size == "lg":
+            chip, pad, icon_fs, title_fs, label_fs, desc_fs, bar = "34px", "14px 16px 14px 18px", "16px", "12.5px", "13.5px", "11.5px", "4px"
+        else:
+            chip, pad, icon_fs, title_fs, label_fs, desc_fs, bar = "30px", "13px 15px 13px 17px", "14.5px", "11.5px", "12.5px", "11px", "4px"
+            
+        return f'<div style="background:{THEME["surface"]}; border:1px solid {THEME["border"]}; border-left:{bar} solid {sty["border"]}; border-radius:10px; padding:{pad}; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">' \
+               f'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">' \
+               f'<div style="display:flex; align-items:center; gap:10px; min-width:0;">' \
+               f'<span style="width:{chip}; height:{chip}; border-radius:9px; background:{sty["bg"]}; display:flex; align-items:center; justify-content:center; font-size:{icon_fs}; flex-shrink:0;">{icon_char}</span>' \
+               f'<div style="min-width:0;">' \
+               f'<div style="font-size:{title_fs}; font-weight:800; color:{sty["border"]}; margin-bottom:1px;">{title_text}</div>' \
+               f'<div style="font-size:{label_fs}; color:{THEME["text_main"]}; font-weight:600;">{ind.get("label","—")}</div>' \
+               f'</div></div>' \
+               f'<span style="background:{sty["badge_bg"]}; color:{sty["badge_color"]}; font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; white-space:nowrap; flex-shrink:0;">{sty["badge_text"]}</span>' \
+               f'</div>' \
+               f'<div style="font-size:{desc_fs}; color:{THEME["text_sub"]}; margin-top:6px; padding-left:44px;">{ind.get("desc","—")}</div>' \
+               f'</div>'
+
+    # 1. 포착 신호
     if signaled_items:
         for title, ind, status in signaled_items:
-            sty = STATUS_STYLE.get(status, STATUS_STYLE["green"])
-            st.markdown(
-                f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
-                     border-radius:10px; padding:12px 14px; margin-bottom:6px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <div style="font-size:12px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
-                    <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:10px;
-                           padding:2px 8px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
-                  </div>
-                  <div style="font-size:13px; color:{THEME['text_main']}; font-weight:600; margin-bottom:2px;">{ind.get('label','—')}</div>
-                  <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
-                </div>""",
-                unsafe_allow_html=True
-            )
+            st.markdown(_render_card_html(title, ind, status, size="lg"), unsafe_allow_html=True)
     else:
         st.markdown(
-            f"""<div style="background:{THEME['surface']}; border:1px dashed {THEME['border']};
-                 border-radius:10px; padding:12px; text-align:center; color:{THEME['text_sub']}; font-size:12px; margin-bottom:6px;">
-                현재 탭에서 포착된 매수/역발상 신호가 없습니다.
-            </div>""",
+            f'<div style="background:{THEME["surface"]}; border:1px dashed {THEME["border"]}; border-radius:10px; padding:12px; text-align:center; color:{THEME["text_sub"]}; font-size:12px; margin-bottom:6px;">현재 탭에서 포착된 매수/역발상 신호가 없습니다.</div>',
             unsafe_allow_html=True
         )
 
-    # 3. 중립 및 미포착 지표는 아코디언으로 감싸서 하단 배치
+    # 2. 중립 및 미포착 지표 (구조 변경 없이 안전하게 이징 수치만 연장)
     if other_items:
-        with st.expander(f"⚙️ 중립 및 미포착 지표 보기 ({len(other_items)}개)", expanded=False):
-            for title, ind, status in other_items:
-                sty = STATUS_STYLE.get(status, STATUS_STYLE["yellow"])
-                st.markdown(
-                    f"""<div style="background:{sty['bg']}; border:1px solid {sty['border']};
-                         border-radius:10px; padding:12px 14px; margin-bottom:6px;">
-                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                        <div style="font-size:12px; color:{THEME['text_main']}; font-weight:700;">{title}</div>
-                        <span style="background:{sty['badge_bg']}; color:{sty['badge_color']}; font-size:10px;
-                               padding:2px 8px; border-radius:20px; font-weight:600; white-space:nowrap;">{sty['badge_text']}</span>
-                      </div>
-                      <div style="font-size:13px; color:{THEME['text_main']}; font-weight:600; margin-bottom:2px;">{ind.get('label','—')}</div>
-                      <div style="font-size:11.5px; color:{THEME['text_sub']};">{ind.get('desc','—')}</div>
-                    </div>""",
-                    unsafe_allow_html=True
-                )
+        red_n = sum(1 for _, _, s in other_items if s == "red")
+        yellow_n = sum(1 for _, _, s in other_items if s == "yellow")
+        
+        red_style = STATUS_STYLE.get("red", {})
+        yellow_style = STATUS_STYLE.get("yellow", {})
+
+        badges_html = ""
+        if red_n > 0:
+            badges_html += f'<span style="background:{red_style.get("badge_bg", "#fee2e2")}; color:{red_style.get("badge_color", "#dc2626")}; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; margin-left:4px;">{red_n}</span>'
+        if yellow_n > 0:
+            badges_html += f'<span style="background:{yellow_style.get("badge_bg", "#fef3c7")}; color:{yellow_style.get("badge_color", "#d97706")}; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; margin-left:4px;">{yellow_n}</span>'
+
+        other_cards_html = "".join(_render_card_html(t, i, s, size="sm") for t, i, s in other_items)
+
+        chk_id = f"acc-toggle-{hash(group_label or 'default') & 0xffffffff}"
+
+        accordion_html = f"""
+        <style>
+        .pure-acc-checkbox {{
+            display: none !important;
+        }}
+        
+        .pure-acc-label {{
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 12px 14px !important;
+            background: {THEME['surface']} !important;
+            border: 1px solid {THEME['border']} !important;
+            border-radius: 10px !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+            margin-top: 6px !important;
+            transition: background 0.2s ease, border-color 0.2s ease !important;
+        }}
+        .pure-acc-label:hover {{
+            border-color: {THEME.get('text_sub', '#9ca3af')} !important;
+        }}
+        .pure-acc-title {{
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            color: {THEME['text_main']} !important;
+        }}
+        
+        /* 화살표 회전 */
+        .pure-acc-svg {{
+            width: 16px;
+            height: 16px;
+            transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }}
+        #{chk_id}:checked + .pure-acc-label .pure-acc-svg {{
+            transform: rotate(180deg);
+        }}
+        
+        /* 이전 코드의 max-height: 600px 유지 및 시간만 0.55s -> 0.75s 확장 */
+        .pure-acc-content {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+        }}
+        #{chk_id}:checked ~ .pure-acc-content {{
+            max-height: 600px;
+            transition: max-height 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+        }}
+        
+        /* 이전 코드 구조 그대로 유지하면서 페이드/이동 시간만 0.4s -> 0.6s 연장 */
+        .pure-acc-inner {{
+            padding-top: 8px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }}
+        #{chk_id}:checked ~ .pure-acc-content .pure-acc-inner {{
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s;
+        }}
+        </style>
+
+        <div>
+            <input type="checkbox" id="{chk_id}" class="pure-acc-checkbox" />
+            <label for="{chk_id}" class="pure-acc-label">
+                <div class="pure-acc-title">
+                    <span>중립 및 미포착 지표</span>
+                    {badges_html}
+                </div>
+                <svg class="pure-acc-svg" viewBox="0 0 24 24" fill="none" stroke="{THEME['text_sub']}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </label>
+            <div class="pure-acc-content">
+                <div class="pure-acc-inner">
+                    {other_cards_html}
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(accordion_html, unsafe_allow_html=True)
 
 def render_risk_card(risk_levels):
     if not risk_levels:

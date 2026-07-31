@@ -61,3 +61,24 @@ def calculate_rs_indicator(close_series, index_series, lookback=20):
         return {"status": status, "label": label, "desc": desc, "score": score, "value": rs_diff}
     except Exception:
         return {"status": "yellow", "label": "RS — 계산 불가", "desc": "지수 데이터 부족", "score": 0, "value": None}
+    
+def get_usdkrw_data():
+    try:
+        ticker = yf.Ticker("KRW=X")
+        # 1개월 데이터 수집 ('1m' 대신 안전하게 '1mo' 사용)
+        df = ticker.history(period="1mo")
+        if df.empty or len(df) < 2:
+            return None
+        
+        close_series = df["Close"]
+        current = float(close_series.iloc[-1])
+        prev = float(close_series.iloc[-2])
+        change_pct = (current - prev) / prev * 100
+        
+        return {
+            "current": current,
+            "change_pct": change_pct,
+            "series": close_series
+        }
+    except Exception:
+        return None

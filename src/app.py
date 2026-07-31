@@ -2,8 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from ui.common import render_tab_group
+import streamlit.components.v1 as components
 
+# 🚨 1. Page Configuration (최상단 필수!)
+st.set_page_config(layout="wide", page_title="개미반대로 (Ant-Contra)")
+
+from ui.common import render_tab_group
 from core.krx_listing import load_krx_listing, search_companies
 from core.price_data import load_price_data
 from core.naver_scraper import get_naver_discussion_by_likes, get_foreign_net_buying, get_news_vacuum, get_recent_news_headlines
@@ -33,10 +37,23 @@ from ui.index_ticker import render_index_ticker
 from constants import THEME, ACCENT
 from streamlit_searchbox import st_searchbox
 
-# 1. Page Configuration
-st.set_page_config(layout="wide", page_title="개미반대로 (Ant-Contra)")
+st.markdown("""
+<style>
+/* iframe 내부의 모든 active / focus 상태 테두리 및 outline 무효화 */
+iframe[title="streamlit_searchbox.searchbox"] {
+    border: none !important;
+    outline: none !important;
+}
 
-# ── [복원] 아코디언(stExpander) 투명화 및 테두리 제거 CSS ────────────────────
+/* 감싸고 있는 외곽 div의 focus 박스 그림자 및 테두리 제거 */
+div[data-testid="stCustomComponentV1"] > iframe {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+# ── [원복] 아코디언(stExpander) 투명화 및 테두리 제거 CSS ────────────────────
 st.markdown(f"""
 <style>
 /* 아코디언 박스 배경 및 테두리 완전히 제거 */
@@ -103,7 +120,7 @@ div[data-baseweb="tab-list"] {{
     width:fit-content; margin-bottom:10px;
 }}
 button[data-baseweb="tab"] {{
-    border-radius:9px; padding:6px 14px; color:{THEME['text_sub']};
+    border-radius:99px; padding:6px 14px; color:{THEME['text_sub']};
     font-weight:600; font-size:13.5px; transition:0.15s;
 }}
 div[data-baseweb="tab-panel"] {{ padding-top: 2px !important; }}
@@ -148,14 +165,12 @@ div[data-testid="stRadio"] label[data-baseweb="radio"] {{
                 background-color 0.25s ease,
                 border-color 0.25s ease;
 }}
-/* label 바로 아래 모든 div 껍데기를 렌더링 트리에서 제거 → p가 label의 직계 flex 자식이 됨 */
 div[data-testid="stRadio"] label[data-baseweb="radio"] > div {{
     display: contents !important;
 }}
 div[data-testid="stRadio"] label[data-baseweb="radio"] > div:not(:has(p)) {{
     display: none !important;
 }}
-/* 네이티브 radio input은 완전히 숨김 (레이아웃에서 제외) */
 div[data-testid="stRadio"] label[data-baseweb="radio"] input[type="radio"] {{
     position: absolute !important;
     opacity: 0 !important;
@@ -195,34 +210,19 @@ with st.container(key="app_header_top"):
         unsafe_allow_html=True
     )
     st.markdown(f"""
-<a href="?home=1" target="_self" style="text-decoration:none;">
-<div style="font-size:20px; font-weight:800; color:{THEME['text_main']}; margin-bottom:6px; width:fit-content; cursor:pointer;">개미반대로</div>
-</a>
-""", unsafe_allow_html=True)
+    <a href="?home=1" target="_self" style="text-decoration:none;">
+        <div style="font-size:22px; font-weight:800; color:{THEME['text_main']}; letter-spacing:-0.5px; margin-bottom:4px; width:fit-content; cursor:pointer;">
+            개미반대로
+        </div>
+    </a>
+    """, unsafe_allow_html=True)
 
     if not is_detail_view:
         st.markdown(f"""
-<div style="margin-bottom:2px;">
-<div style="background:{ACCENT}14; border-radius:999px; padding:7px 16px; margin-bottom:4px;
-     display:inline-flex; align-items:center; gap:6px; width:fit-content;">
-<span style="font-size:11.5px; color:{THEME['text_main']}; font-weight:600; white-space:nowrap;">
-⚡ 실시간 여론 × 기술적 지표로 군중의 공포를 찾는 역발상 스캐너
-</span>
-</div>
-<div style="font-size:10.5px; color:{THEME['text_sub']}; padding-left:2px;">
-😱 통합 공포지수 &nbsp;·&nbsp; 📊 RSI·볼린저·수급 분석 &nbsp;·&nbsp; 🔥 개미 FOMO 탐지 &nbsp;·&nbsp; 💬 네이버 실시간 여론
-</div>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown(f"""
-<style>
-div[data-testid="stPlotlyChart"] {{
-    border:1px solid {THEME['border']}; border-radius:14px;
-    padding:12px; background:{THEME['bg']};
-}}
-</style>
-""", unsafe_allow_html=True)
+        <div style="font-size:13px; color:{THEME['text_sub']}; font-weight:500; margin-bottom:16px; letter-spacing:-0.3px;">
+            군중의 공포와 역발상 투자 기회를 분석합니다
+        </div>
+        """, unsafe_allow_html=True)
 
 KRX_LISTING, KRX_SOURCE, KRX_ERROR = load_krx_listing()
 
@@ -232,15 +232,58 @@ if KRX_SOURCE == "backup":
         "잠시 후 새로고침하면 정상화될 수 있습니다."
     )
 
-with st.container(border=True):
+# 1. searchbox를 담을 전용 스코프(container) 생성
+with st.container(key="searchbox_wrapper"):
     selected_item = st_searchbox(
-        lambda term: search_companies(term, KRX_LISTING),
-        default=st.session_state.get("last_selected", None),
-        key="stock_searchbox",
-        placeholder="종목명 또는 종목코드 입력 (예: 삼성전자, 005930)"
-    )
+    lambda term: search_companies(term, KRX_LISTING),
+    default=st.session_state.get("last_selected", None),
+    key="stock_searchbox",
+    placeholder="종목명 또는 종목코드 입력 (예: 삼성전자, 005930)",
+    style_overrides={
+        "control": {
+            "border": "none",
+            "border-color": "transparent",
+            "box-shadow": "none",
+            "outline": "none",
+        }
+    }
+)
 
-# 유효한 선택이면 저장, 아니면 마지막 저장값 사용
+# 2. 해당 wrapper의 가장 상위 엘리먼트에 직접 그림자/테두리 부여
+st.markdown("""
+<style>
+/* 1. 바깥 컨테이너: 테두리, 그림자, 모서리 깎기 유지 */
+div.st-key-searchbox_wrapper {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #CBD5E1 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+    overflow: hidden !important;
+    margin-bottom: 16px !important;
+    padding: 0 !important;
+}
+
+/* 2. 내부 iframe 및 하위 요소의 주황색 테두리/아웃라인 강제 제거 */
+div.st-key-searchbox_wrapper iframe {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+/* 3. 포커스 시 생기는 기본 아웃라인/주황선 제거 */
+div.st-key-searchbox_wrapper *:focus,
+div.st-key-searchbox_wrapper *:focus-within,
+div.st-key-searchbox_wrapper *:active {
+    outline: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 if selected_item and "(" in selected_item:
     st.session_state["last_selected"] = selected_item
     st.session_state["dashboard_ready"] = True
@@ -251,9 +294,7 @@ elif "stock" in st.query_params:
     st.session_state["last_selected"] = selected_item
     st.session_state["dashboard_ready"] = True
 else:
-    # ✅ 메인 화면(종목 미선택) 상태일 때만 지수 티커와 랜딩 페이지, 스캐너가 실행되도록 이동
     render_index_ticker()
-    render_landing()
     with st.spinner("공포 스캐너 실행 중..."):
         scan_results = run_fear_scanner(top_n=10)
     render_fear_scanner(scan_results, KRX_LISTING)
@@ -265,15 +306,13 @@ else:
         f"<span style='color:{THEME['text_sub']};'>→</span></div></a>",
         unsafe_allow_html=True
     )
+    render_landing()
     st.stop()
 
 st.query_params["stock"] = selected_item
 
 selected_company = selected_item.split(" (")[0]
 ticker_input = selected_item.split(" (")[1].replace(")", "").strip()
-
-st.success(f"✅ **{selected_company}**({ticker_input}) 대시보드를 안정적으로 로드했습니다.")
-st.markdown("<hr style='margin-top:4px; margin-bottom:14px;'>", unsafe_allow_html=True)
 
 df, market_suffix = load_price_data(ticker_input)
 fundamentals = get_fundamental_data(ticker_input)
@@ -309,7 +348,6 @@ try:
     foreign_data = get_foreign_net_buying(ticker_input)
     news_data = get_news_vacuum(ticker_input)
 
-    # 수급/뉴스 스크래핑 실패 시 신뢰도 저하 경고
     if "error" in foreign_data or "error" in news_data:
         st.caption("⚠️ 일부 수급/뉴스 데이터를 실시간으로 가져오지 못해 해당 지표의 신뢰도가 낮을 수 있습니다.")
 
@@ -327,7 +365,7 @@ try:
     score_history = get_score_history(ticker_input)
     risk_levels = calculate_risk_levels(close_cleaned, high_cleaned, low_cleaned, current_price)
     entry = get_entry_signal(obj_indicators, final_scream_score, risk_levels)
-    # 가격 기반 / 수급 기반 그룹 헤더로 구분
+
     price_keys = [
         ("rsi",      "📈 RSI (14일)"),
         ("bb",       "〰️ 볼린저 밴드"),
@@ -335,15 +373,18 @@ try:
         ("drawdown", "📉 고점 대비 낙폭"),
         ("trend",    "🪫 장기추세 (200일선)"),
         ("candle",   "🕯️ 캔들패턴"),
-        ("ichimoku", "☁️ 일목균형표"),
-        ("rs",       "🏁 시장대비 상대강도"),
-        ]
+    ]
+    if "ichimoku" in obj_indicators:
+        price_keys.append(("ichimoku", "☁️ 일목균형표"))
+    price_keys.append(("rs", "🏁 시장대비 상대강도"))
+
     supply_keys = [
-        ("volume",      "🔊 거래량 폭발"),
-        ("pvd",         "💥 공포-거래량 괴리"),
-        ("foreign",     "🌍 외국인 동향"),
-        ("obv", "📊 OBV 다이버전스")
-        ]
+        ("volume",  "🔊 거래량 폭발"),
+        ("pvd",     "💥 공포-거래량 괴리"),
+        ("foreign", "🌍 외국인 동향"),
+    ]
+    if "obv" in obj_indicators:
+        supply_keys.append(("obv", "📊 OBV 다이버전스"))
 
     col_main, col_side = st.columns([6, 4])
 
@@ -361,29 +402,29 @@ try:
         fib = calc_fibonacci_nearest(close_cleaned)
         render_price_info(current_price, change_pct, ant_refund_line, fib, volatility_warning)
         render_fundamental_stats(fundamentals)
+        
         st.markdown(f"<hr style='border:none; border-top:1px solid {THEME['border']}; margin:16px 0 2px 0;'>", unsafe_allow_html=True)
 
         indicator_mode = render_tab_group(["가격 기반", "수급 기반"], key="indicator_mode_toggle")
 
-        # only_signaled=True 옵션 추가로 포착된 신호만 아코디언 노출
         if indicator_mode == "가격 기반":
             render_indicator_group(price_keys, obj_indicators, only_signaled=True)
         else:
             render_indicator_group(supply_keys, obj_indicators, only_signaled=True)
 
     with col_side:
-        render_entry_card(entry)
-        render_risk_card(risk_levels)
-        render_gauge_and_tier(final_scream_score, scream_tier, score_delta)
-        render_score_history_sparkline(score_history)
-        render_score_metrics(community_raw, objective_score, community_score)
-        render_signal_summary(obj_indicators)
-        render_fomo_panel(fomo_data)
-        news_headlines = get_recent_news_headlines(ticker_input)
-        render_news_headlines(news_headlines)
-        st.markdown(f"<hr style='border:none; border-top:1px solid {THEME['border']}; margin:8px 0 10px 0;'>", unsafe_allow_html=True)
-        render_community_tab(naver_posts, ai_reason)
+            render_gauge_and_tier(final_scream_score, scream_tier, score_delta)
+            render_entry_card(entry)
+            render_risk_card(risk_levels)
+            render_score_history_sparkline(score_history)
+            render_score_metrics(community_raw, objective_score, weight_reduced=((volatility_warning or 0) > 0))
+            render_signal_summary(obj_indicators)
+            render_fomo_panel(fomo_data)
 
+            news_headlines = get_recent_news_headlines(ticker_input)
+            render_news_headlines(news_headlines)
+            render_community_tab(naver_posts, ai_reason)
+        
 except Exception as e:
     st.error(f"⚠️ 대시보드 로드 중 치명적인 문제가 발생했습니다. (에러: {e})")
     st.exception(e)

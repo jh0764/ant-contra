@@ -25,9 +25,9 @@ greedy_dictionary = [
     ]
 
 THEME = {
-    "bg": "#EEF0F3", 
+    "bg": "#F4F6FB", 
     "surface": "#FFFFFF", 
-    "border": "#DDE1E6",
+    "border": "#E2E8F0",
     "text_main": "#1A1D29", 
     "text_sub": "#6B7280",
 }

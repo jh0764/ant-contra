@@ -7,45 +7,58 @@ def render_price_info(current_price, change_pct, ant_refund_line, fib, volatilit
     p_color = PRICE_COLOR["up"] if is_up else PRICE_COLOR["down"]
     p_bg = "#fee2e2" if is_up else "#dbeafe"
     arrow = "▲" if is_up else "▼"
-    vwap_status = "손실 구간" if current_price < ant_refund_line else "수익 구간"
+    
+    # 개미 평단 대비 구간 강조 (뱃지 배경 제거 -> 텍스트 심볼 강조)
+    is_loss = current_price < ant_refund_line
+    vwap_status = "손실 구간" if is_loss else "수익 구간"
+    vwap_color = PRICE_COLOR["up"] if is_loss else PRICE_COLOR["down"] # 손실 시 경고성 붉은색 텍스트
 
     st.markdown(f"""
-    <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:{SPACING};">
-      <span style="font-size:32px; font-weight:800; color:{p_color};">{current_price:,}원</span>
-      <span style="background:{p_bg}; color:{p_color}; font-weight:700; font-size:13px;
-            padding:3px 10px; border-radius:6px;">{arrow} {change_pct:+.2f}%</span>
-    </div>
-    <div style="font-size:12.5px; color:{THEME['text_sub']}; margin-bottom:10px;">
-      개미 평단 추정선 <b style="color:{THEME['text_main']};">{ant_refund_line:,}원</b> — {vwap_status}
+    <div style="margin-top:8px; margin-bottom:16px;">
+      <!-- 메인 가격 영역 (1순위 강조: 뱃지 사용) -->
+      <div style="display:flex; align-items:baseline; gap:10px;">
+        <span style="font-size:34px; font-weight:900; color:{p_color}; letter-spacing:-0.5px;">{current_price:,}원</span>
+        <span style="background:{p_bg}; color:{p_color}; font-weight:700; font-size:13.5px; padding:3px 10px; border-radius:6px;">{arrow} {change_pct:+.2f}%</span>
+      </div>
+      
+      <!-- 개미 평단 추정선 (2순위 서브 강조: 점 구분 기호 + 컬러 텍스트) -->
+      <div style="display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12.5px;">
+        <span style="color:{THEME['text_sub']}; font-weight:500;">개미 평단 추정선</span>
+        <span style="color:{THEME['text_main']}; font-weight:700;">{ant_refund_line:,}원</span>
+        <span style="color:{THEME['border']}; font-size:10px;">•</span>
+        <span style="color:{vwap_color}; font-weight:800;">{vwap_status}</span>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
     if fib:
         pct, price, status = fib
         gap_pct = (current_price - price) / price * 100
-        pct_color = PRICE_COLOR["up"] if gap_pct >= 0 else PRICE_COLOR["down"]
-        fib_border = pct_color
-        fib_msg = "현재가가 이 라인 위에 있어 '지지선' 역할을 하고 있어요." if status == "지지" \
-            else "현재가가 이 라인 아래로 내려가 '저항선'으로 바뀐 상태예요."
-        html_block(f"""
-        <div style="background:{THEME['surface']}; border:1px solid {fib_border}55; border-radius:8px; padding:10px 14px; margin:{SPACING} 0;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:12.5px; color:{THEME['text_main']}; font-weight:700;">피보나치 되돌림 {pct*100:.1f}%</span>
-        <span style="font-size:11.5px; font-weight:700; color:{pct_color};">{status} ({gap_pct:+.1f}%)</span>
-        </div>
-        <div style="font-size:11px; color:{THEME['text_sub']}; margin-top:4px;">
-        기준가 <b style="color:{THEME['text_main']};">{price:,.0f}원</b> — 52주 고점·저점 사이 되돌림 구간. {fib_msg}
-        </div>
-        </div>
-        """)
+        is_support = status == "지지"
+        accent_color = PRICE_COLOR["up"] if is_support else PRICE_COLOR["down"]
+        badge_bg = "#fee2e2" if is_support else "#dbeafe"
+        
+        # 핵심 키워드 강조 처리
+        role_highlight = f"<b style='color:{accent_color}; font-weight:700;'>지지선</b>" if is_support else f"<b style='color:{accent_color}; font-weight:700;'>저항선</b>"
+        fib_msg = f"현재가가 이 라인 위에 있어 {role_highlight} 역할 수행 중" if is_support else f"현재가가 이 라인 아래에 있어 {role_highlight}으로 변환"
 
-    if volatility_warning:
-        st.markdown(
-            f"<div style='font-size:11px; color:{THEME['text_sub']}; background:#FEF3C7; "
-            f"border:1px solid #FDE68A; border-radius:6px; padding:6px 10px; margin-top:6px;'>"
-            f"⚠️ {volatility_warning}</div>",
-            unsafe_allow_html=True
-        )
+        # 아래쪽 border-bottom 제거 (펀더멘털 영역 상단 선과 중복 방지)
+        st.markdown(f"""
+        <div style="padding:14px 0 10px 0; border-top:1px solid {THEME['border']}; margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                <div>
+                    <span style="font-size:11.5px; color:{THEME['text_sub']}; font-weight:700; letter-spacing:-0.2px;">피보나치 되돌림 <b style="color:{THEME['text_main']};">({pct*100:.1f}%)</b></span>
+                    <div style="font-size:18px; font-weight:900; color:{THEME['text_main']}; margin-top:2px; letter-spacing:-0.3px;">{price:,.0f}원</div>
+                </div>
+                <div style="background:{badge_bg}; padding:4px 10px; border-radius:6px; margin-top:2px;">
+                    <span style="font-size:12.5px; font-weight:800; color:{accent_color};">{status} {gap_pct:+.1f}%</span>
+                </div>
+            </div>
+            <div style="font-size:11.5px; color:{THEME['text_sub']}; margin-top:2px;">
+                {fib_msg}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
 # 네이버 종목토론방 바로가기 URL 생성
@@ -128,17 +141,36 @@ def render_news_headlines(headlines):
         )
 
 def render_fundamental_stats(fundamentals):
-    items = [
-        ("시가총액", fundamentals["market_cap"]), ("PER", fundamentals["per"]),
-        ("PBR", fundamentals["pbr"]), ("EPS", fundamentals["eps"]),
-        ("배당수익률", fundamentals["dividend_yield"]),
-    ]
-    cols = st.columns(len(items))
-    for col, (label, value) in zip(cols, items):
-        with col:
-            html_block(f"""
-<div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:8px; padding:10px 8px; text-align:center; height:72px; display:flex; flex-direction:column; justify-content:center;">
-<div style="font-size:11px; color:{THEME['text_sub']}; margin-bottom:3px;">{label}</div>
-<div style="font-size:12px; font-weight:700; color:{THEME['text_main']}; white-space:normal; word-break:keep-all; line-height:1.3;">{value}</div>
-</div>
-""")
+    cap = fundamentals.get('market_cap', 'N/A')
+    per = fundamentals.get('per', 'N/A')
+    pbr = fundamentals.get('pbr', 'N/A')
+    eps = fundamentals.get('eps', 'N/A')
+    div = fundamentals.get('dividend_yield', 'N/A')
+
+    # 하단 border-bottom 제거 및 margin-bottom으로 탭과의 간격만 확보
+    st.markdown(f"""
+    <div style="border-top:1px solid {THEME['border']}; padding-top:14px; margin-top:12px; margin-bottom:32px;">
+        <div style="display:grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr 1fr; gap:4px; text-align:left;">
+            <div>
+                <div style="font-size:10.5px; color:{THEME['text_sub']}; font-weight:500;">시가총액</div>
+                <div style="font-size:12.5px; color:{THEME['text_main']}; font-weight:700; white-space:nowrap; margin-top:2px;">{cap}</div>
+            </div>
+            <div style="border-left:1px solid {THEME['border']}66; padding-left:10px;">
+                <div style="font-size:10.5px; color:{THEME['text_sub']}; font-weight:500;">PER</div>
+                <div style="font-size:12.5px; color:{THEME['text_main']}; font-weight:700; margin-top:2px;">{per}</div>
+            </div>
+            <div style="border-left:1px solid {THEME['border']}66; padding-left:10px;">
+                <div style="font-size:10.5px; color:{THEME['text_sub']}; font-weight:500;">PBR</div>
+                <div style="font-size:12.5px; color:{THEME['text_main']}; font-weight:700; margin-top:2px;">{pbr}</div>
+            </div>
+            <div style="border-left:1px solid {THEME['border']}66; padding-left:10px;">
+                <div style="font-size:10.5px; color:{THEME['text_sub']}; font-weight:500;">EPS</div>
+                <div style="font-size:12.5px; color:{THEME['text_main']}; font-weight:700; white-space:nowrap; margin-top:2px;">{eps}</div>
+            </div>
+            <div style="border-left:1px solid {THEME['border']}66; padding-left:10px;">
+                <div style="font-size:10.5px; color:{THEME['text_sub']}; font-weight:500;">배당수익률</div>
+                <div style="font-size:12.5px; color:{THEME['text_main']}; font-weight:700; margin-top:2px;">{div}</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)

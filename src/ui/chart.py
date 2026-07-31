@@ -392,6 +392,13 @@ def render_candle_chart(df, key_prefix="candle"):
     y_max = float(display_df['High'].iloc[start_idx:].max())
     y_pad = (y_max - y_min) * 0.04
 
+# x축 패딩 계산 (날짜 차이 기반 0.8일 간격 여유 확보)
+    start_date = pd.to_datetime(display_df['Date'].iloc[start_idx])
+    end_date = pd.to_datetime(display_df['Date'].iloc[-1])
+    
+    # x축 좌우 여유 시간 (약 18시간 = 0.75일 여유)
+    x_pad = pd.Timedelta(hours=18)
+
     fig.update_layout(
         height=400, margin=dict(l=0, r=20, t=8, b=0),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
@@ -405,7 +412,8 @@ def render_candle_chart(df, key_prefix="candle"):
             type='date',
             tickformat='%m/%d',
             showgrid=False, tickfont=dict(size=10.5),
-            range=[display_df['Date'].iloc[start_idx], display_df['Date'].iloc[-1]],
+            # 💡 양 끝에 x_pad만큼 여유 공간을 주어 캔들 잘림 방지
+            range=[start_date - x_pad, end_date + x_pad],
         ),
         yaxis=dict(
             gridcolor=THEME['border'], gridwidth=1,
@@ -415,3 +423,4 @@ def render_candle_chart(df, key_prefix="candle"):
         ),
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    

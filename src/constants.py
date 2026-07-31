@@ -42,7 +42,7 @@ STATUS_STYLE = {
     "red":    {"bg": "#FEE2E2", "border": "#DC2626", "badge_bg": "#DC2626", "badge_text": "미포착", "badge_color": "#FFFFFF"},
 }
 
-ACCENT = "#FF7A2F"
+ACCENT = "#3182f6"
 SPACING = "10px"
 
 # ── 지표 임계값 ──────────────────────────────────────────

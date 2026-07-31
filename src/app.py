@@ -3,7 +3,8 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import streamlit.components.v1 as components
-
+import base64
+from pathlib import Path
 # 🚨 1. Page Configuration (최상단 필수!)
 st.set_page_config(layout="wide", page_title="개미반대로 (Ant-Contra)")
 
@@ -37,22 +38,6 @@ from ui.index_ticker import render_index_ticker
 from constants import THEME, ACCENT
 from streamlit_searchbox import st_searchbox
 
-st.markdown("""
-<style>
-/* iframe 내부의 모든 active / focus 상태 테두리 및 outline 무효화 */
-iframe[title="streamlit_searchbox.searchbox"] {
-    border: none !important;
-    outline: none !important;
-}
-
-/* 감싸고 있는 외곽 div의 focus 박스 그림자 및 테두리 제거 */
-div[data-testid="stCustomComponentV1"] > iframe {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
 # ── [원복] 아코디언(stExpander) 투명화 및 테두리 제거 CSS ────────────────────
 st.markdown(f"""
 <style>
@@ -204,25 +189,71 @@ div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p {{
 
 is_detail_view = bool(st.session_state.get("dashboard_ready")) or ("stock" in st.query_params)
 
+# ── 💡 Base64로 이미지 읽기 ───────────────────────────────────────────────
+def get_image_base64(file_path):
+    # app.py가 있는 폴더(src)를 기준으로 경로 생성
+    base_dir = Path(__file__).resolve().parent
+    full_path = base_dir / file_path
+    
+    if not full_path.exists():
+        raise FileNotFoundError(f"파일이 존재하지 않습니다: {full_path}")
+        
+    with open(full_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode()
+
+try:
+    # app.py와 같은 위치에 있는 ui 폴더 내부의 이미지
+    logo_b64 = get_image_base64("ui/개미반대로로고.png")
+    logo_src = f"data:image/png;base64,{logo_b64}"
+except Exception as e:
+    logo_src = ""
+    # 터미널이나 화면에 에러 원인 출력
+    st.error(f"로고 로드 실패: {e}")
+
+# ── 💡 로고 이미지 적용 영역 ──────────────────────────────────────────────
 with st.container(key="app_header_top"):
+    # Streamlit 기본 컨테이너 패딩 및 하단 여백 완벽 제거
     st.markdown(
-        "<style>div.st-key-app_header_top [data-testid='stElementContainer']{margin-bottom:0 !important;}</style>",
+        """
+        <style>
+        div.st-key-app_header_top [data-testid='stElementContainer'] {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        </style>
+        """,
         unsafe_allow_html=True
     )
-    st.markdown(f"""
-    <a href="?home=1" target="_self" style="text-decoration:none;">
-        <div style="font-size:22px; font-weight:800; color:{THEME['text_main']}; letter-spacing:-0.5px; margin-bottom:4px; width:fit-content; cursor:pointer;">
-            개미반대로
-        </div>
-    </a>
-    """, unsafe_allow_html=True)
-
+    
+    sub_text_html = ""
     if not is_detail_view:
+        sub_text_html = f"""
+        <div style="margin-top: -38px; margin-bottom: 0px;">
+            <span style="
+                font-size: 12px; 
+                font-weight: 600; 
+                color: {THEME['text_main']}; 
+                background: rgba(0, 0, 0, 0.05); 
+                padding: 2px 8px; 
+                border-radius: 5px; 
+                letter-spacing: -0.3px;
+                display: inline-block;
+            ">
+                군중의 공포와 역발상 투자 기회 분석
+            </span>
+        </div>
+        """
+
+    if logo_src:
         st.markdown(f"""
-        <div style="font-size:13px; color:{THEME['text_sub']}; font-weight:500; margin-bottom:16px; letter-spacing:-0.3px;">
-            군중의 공포와 역발상 투자 기회를 분석합니다
+        <div style="line-height: 1; margin-bottom: -22px;">
+            <a href="?home=1" target="_self" style="text-decoration:none; display:inline-block;">
+                <img src="{logo_src}" style="width:170px; height:auto; display:block;" alt="개미반대로 로고">
+            </a>
+            {sub_text_html}
         </div>
         """, unsafe_allow_html=True)
+# ──────────────────────────────────────────────────────────────────────────
 
 KRX_LISTING, KRX_SOURCE, KRX_ERROR = load_krx_listing()
 
@@ -232,57 +263,26 @@ if KRX_SOURCE == "backup":
         "잠시 후 새로고침하면 정상화될 수 있습니다."
     )
 
-# 1. searchbox를 담을 전용 스코프(container) 생성
-with st.container(key="searchbox_wrapper"):
-    selected_item = st_searchbox(
+st.markdown(
+    """
+<style>
+div[data-testid="stCustomComponentV1"],
+iframe[title*="streamlit_searchbox"] {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+# 2. 검색창 호출 (st.container 제거)
+selected_item = st_searchbox(
     lambda term: search_companies(term, KRX_LISTING),
     default=st.session_state.get("last_selected", None),
     key="stock_searchbox",
     placeholder="종목명 또는 종목코드 입력 (예: 삼성전자, 005930)",
-    style_overrides={
-        "control": {
-            "border": "none",
-            "border-color": "transparent",
-            "box-shadow": "none",
-            "outline": "none",
-        }
-    }
 )
 
-# 2. 해당 wrapper의 가장 상위 엘리먼트에 직접 그림자/테두리 부여
-st.markdown("""
-<style>
-/* 1. 바깥 컨테이너: 테두리, 그림자, 모서리 깎기 유지 */
-div.st-key-searchbox_wrapper {
-    background-color: #FFFFFF !important;
-    border: 1.5px solid #CBD5E1 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
-    overflow: hidden !important;
-    margin-bottom: 16px !important;
-    padding: 0 !important;
-}
-
-/* 2. 내부 iframe 및 하위 요소의 주황색 테두리/아웃라인 강제 제거 */
-div.st-key-searchbox_wrapper iframe {
-    background-color: transparent !important;
-    border: none !important;
-    outline: none !important;
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-}
-
-/* 3. 포커스 시 생기는 기본 아웃라인/주황선 제거 */
-div.st-key-searchbox_wrapper *:focus,
-div.st-key-searchbox_wrapper *:focus-within,
-div.st-key-searchbox_wrapper *:active {
-    outline: none !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 if selected_item and "(" in selected_item:
     st.session_state["last_selected"] = selected_item

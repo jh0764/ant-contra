@@ -212,45 +212,41 @@ except Exception as e:
 
 # ── 💡 로고 이미지 적용 영역 ──────────────────────────────────────────────
 with st.container(key="app_header_top"):
-    # Streamlit 기본 컨테이너 패딩 및 하단 여백 완벽 제거
     st.markdown(
         """
         <style>
+        /* 컨테이너의 하단 간격은 적절하게 유지 (검색창과 붙는 현상 방지) */
         div.st-key-app_header_top [data-testid='stElementContainer'] {
-            margin-bottom: 0 !important;
-            padding-bottom: 0 !important;
+            margin-bottom: 0px !important;
+            padding-bottom: 0px !important;
         }
         </style>
         """,
         unsafe_allow_html=True
     )
-    
-    sub_text_html = ""
-    if not is_detail_view:
-        sub_text_html = f"""
-        <div style="margin-top: -38px; margin-bottom: 0px;">
-            <span style="
-                font-size: 12px; 
-                font-weight: 600; 
-                color: {THEME['text_main']}; 
-                background: rgba(0, 0, 0, 0.05); 
-                padding: 2px 8px; 
-                border-radius: 5px; 
-                letter-spacing: -0.3px;
-                display: inline-block;
-            ">
-                군중의 공포와 역발상 투자 기회 분석
-            </span>
-        </div>
-        """
 
     if logo_src:
         st.markdown(f"""
-        <div style="line-height: 1; margin-bottom: -22px;">
+        <div style="line-height: 1; margin-bottom: 12px;">
+            <!-- 로고 이미지 -->
             <a href="?home=1" target="_self" style="text-decoration:none; display:inline-block;">
                 <img src="{logo_src}" style="width:170px; height:auto; display:block;" alt="개미반대로 로고">
             </a>
-            {sub_text_html}
+            <!-- 설명 뱃지: 로고 쪽으로 -38px 당겨서 밀착 -->
+            <div style="margin-top: -38px; margin-bottom: 0px;">
+                <span style="
+                    font-size: 12px; 
+                    font-weight: 600; 
+                    color: {THEME['text_main']}; 
+                    background: rgba(0, 0, 0, 0.05); 
+                    padding: 2px 8px; 
+                    border-radius: 5px; 
+                    letter-spacing: -0.3px;
+                    display: inline-block;
+                ">
+                    군중의 공포와 역발상 투자 기회 분석
+                </span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 # ──────────────────────────────────────────────────────────────────────────
@@ -298,14 +294,6 @@ else:
     with st.spinner("공포 스캐너 실행 중..."):
         scan_results = run_fear_scanner(top_n=10)
     render_fear_scanner(scan_results, KRX_LISTING)
-    st.markdown(
-        f"<a href='?view=backtest' target='_self' style='text-decoration:none;'>"
-        f"<div style='background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:10px; "
-        f"padding:10px 14px; margin-top:10px; display:flex; justify-content:space-between; align-items:center;'>"
-        f"<span style='font-size:13px; font-weight:700; color:{THEME['text_main']};'>📊 점수 유효성 백테스트 보기</span>"
-        f"<span style='color:{THEME['text_sub']};'>→</span></div></a>",
-        unsafe_allow_html=True
-    )
     render_landing()
     st.stop()
 

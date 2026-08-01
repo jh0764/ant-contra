@@ -76,19 +76,108 @@ def render_fear_scanner(results, krx_listing):
 
     css = f"""
     <style>
-    /* 헤더 영역 */
-    .scanner-header-title {{
-        font-size: 18px;
-        font-weight: 800;
-        color: {THEME['text_main']};
-        margin-bottom: 4px;
-        letter-spacing: -0.3px;
+    /* 헤더 컨테이너 레이아웃 정렬 */
+    .scanner-header-top {{
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin-bottom: 6px !important;
     }}
+
+    .scanner-header-title {{
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        color: #0F172A !important;
+        letter-spacing: -0.4px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }}
+    
+    .scanner-live-dot {{
+        width: 7px;
+        height: 7px;
+        background-color: #10B981;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }}
+
+    /* ──────────────────────────────────────────────────────────
+       Uiverse 기반 CTA (Call-To-Action) 미니멀 인터랙션 스타일
+       ────────────────────────────────────────────────────────── */
+.cta-backtest {{
+        margin-left: auto !important;
+        border: none !important;
+        background: none !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        text-decoration: none !important;
+        padding: 4px 0 !important;
+    }}
+
+    .cta-backtest .hover-underline-animation {{
+        position: relative !important;
+        color: #334155 !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.2px !important;
+        padding-bottom: 2px !important;
+        padding-right: 8px !important;
+    }}
+
+    /* 밑줄 드로잉 애니메이션 */
+    .cta-backtest .hover-underline-animation:after {{
+        content: "" !important;
+        position: absolute !important;
+        width: 100% !important;
+        transform: scaleX(0) !important;
+        height: 1.5px !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        background-color: #334155 !important;
+        transform-origin: bottom right !important;
+        transition: transform 0.25s ease-out !important;
+    }}
+
+    /* 호버 시 글자색 고정 */
+    .cta-backtest:hover .hover-underline-animation {{
+        color: #334155 !important;
+    }}
+
+    .cta-backtest:hover .hover-underline-animation:after {{
+        transform: scaleX(1) !important;
+        transform-origin: bottom left !important;
+    }}
+
+    /* SVG 화살표 슬라이드 애니메이션 */
+    .cta-backtest svg {{
+        width: 14px;
+        height: 14px;
+        stroke: #475569;
+        stroke-width: 2;
+        fill: none;
+        transform: translateX(0);
+        transition: all 0.3s ease !important;
+    }}
+
+    .cta-backtest:hover svg {{
+        stroke: #0F172A !important;
+        transform: translateX(5px) !important;
+    }}
+
+    .cta-backtest:active svg {{
+        transform: scale(0.9) translateX(5px) !important;
+    }}
+
     .scanner-header-desc {{
-        font-size: 11.5px;
-        color: {THEME['text_sub']};
-        margin-bottom: 16px;
-        opacity: 0.85;
+        font-size: 12px !important;
+        color: #64748B !important;
+        margin-bottom: 14px !important;
+        line-height: 1.4 !important;
+        letter-spacing: -0.2px !important;
     }}
 
     .scanner-grid {{
@@ -97,7 +186,7 @@ def render_fear_scanner(results, krx_listing):
         gap: 18px;
     }}
 
-    /* 통합 카드 패널 (투명 배경 + 부드러운 패널 호버 애니메이션) */
+    /* 이하 기존 리스트 스캐너 카드 CSS 유지 */
     .scanner-panel {{
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
         border: 1px solid {THEME['border']};
@@ -110,7 +199,6 @@ def render_fear_scanner(results, krx_listing):
         transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
     }}
 
-    /* 카드 패널 호버 효과 */
     .scanner-panel:hover {{
         transform: translateY(-3px);
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -134,124 +222,26 @@ def render_fear_scanner(results, krx_listing):
         line-height: 1;
     }}
 
-    .market-badge.kospi {{
-        background: #EFF6FF;
-        color: #1D4ED8;
-        border: 1px solid #BFDBFE;
-    }}
-
-    .market-badge.kosdaq {{
-        background: #ECFDF5;
-        color: #047857;
-        border: 1px solid #A7F3D0;
-    }}
-
-    /* 리스트 및 행(Row) 애니메이션 */
-    .scanner-list-container {{
-        background: transparent;
-    }}
-
-    .scanner-row-link {{
-        text-decoration: none !important;
-        display: block;
-    }}
-
-    .scanner-row {{
-        padding: 9.5px 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: background-color 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    }}
-
-    /* 리스트 행 마우스 호버 효과: 배경 하이라이트 + 3px 우측 이동 */
-    .scanner-row-link:hover .scanner-row {{
-        background-color: rgba(255, 255, 255, 0.08);
-        transform: translateX(3px);
-    }}
-
-    .scanner-row-left {{
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-    }}
-
-    .rank-tag {{
-        width: 18px;
-        height: 18px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: 800;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        transition: transform 0.18s ease;
-    }}
-
-    /* 호버 시 1~3위 순위 배지 살짝 확대 */
-    .scanner-row-link:hover .rank-tag {{
-        transform: scale(1.1);
-    }}
-
+    .market-badge.kospi {{ background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }}
+    .market-badge.kosdaq {{ background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }}
+    .scanner-list-container {{ background: transparent; }}
+    .scanner-row-link {{ text-decoration: none !important; display: block; }}
+    .scanner-row {{ padding: 9.5px 14px; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1); }}
+    .scanner-row-link:hover .scanner-row {{ background-color: rgba(255, 255, 255, 0.08); transform: translateX(3px); }}
+    .scanner-row-left {{ display: flex; align-items: center; gap: 10px; min-width: 0; }}
+    .rank-tag {{ width: 18px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.18s ease; }}
+    .scanner-row-link:hover .rank-tag {{ transform: scale(1.1); }}
     .rank-1 {{ background: #FEF3C7; color: #D97706; }}
     .rank-2 {{ background: #F1F5F9; color: #475569; }}
     .rank-3 {{ background: #FFEDD5; color: #C2410C; }}
     .rank-default {{ background: transparent; color: {THEME['text_sub']}; opacity: 0.5; }}
-
-    .scanner-row-info {{
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        min-width: 0;
-    }}
-
-    .scanner-row-name {{
-        font-size: 13px;
-        font-weight: 700;
-        color: {THEME['text_main']};
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        line-height: 1.2;
-    }}
-
-    .scanner-row-code {{
-        font-size: 10px;
-        font-weight: 500;
-        color: {THEME['text_sub']};
-        opacity: 0.6;
-    }}
-
-    .scanner-row-right {{
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-shrink: 0;
-    }}
-
-    .scanner-price {{
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: -0.2px;
-    }}
-
-    .scanner-score-badge {{
-        font-size: 11px;
-        font-weight: 800;
-        padding: 2px 7px;
-        border-radius: 5px;
-        min-width: 36px;
-        text-align: center;
-    }}
-
-    .scanner-empty-box {{
-        padding: 24px 0;
-        text-align: center;
-        font-size: 11.5px;
-        color: {THEME['text_sub']};
-    }}
+    .scanner-row-info {{ display: flex; flex-direction: column; gap: 1px; min-width: 0; }}
+    .scanner-row-name {{ font-size: 13px; font-weight: 700; color: {THEME['text_main']}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }}
+    .scanner-row-code {{ font-size: 10px; font-weight: 500; color: {THEME['text_sub']}; opacity: 0.6; }}
+    .scanner-row-right {{ display: flex; align-items: center; gap: 10px; flex-shrink: 0; }}
+    .scanner-price {{ font-size: 12px; font-weight: 700; letter-spacing: -0.2px; }}
+    .scanner-score-badge {{ font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 5px; min-width: 36px; text-align: center; }}
+    .scanner-empty-box {{ padding: 24px 0; text-align: center; font-size: 11.5px; color: {THEME['text_sub']}; }}
     </style>
     """
 
@@ -261,9 +251,22 @@ def render_fear_scanner(results, krx_listing):
     kospi_html = _render_column(kospi_badge, results.get("kospi", []), name_map)
     kosdaq_html = _render_column(kosdaq_badge, results.get("kosdaq", []), name_map)
 
+    # HTML Structure (Uiverse CTA 인터랙션 적용)
     header_html = f"""
     {css}
-    <div class="scanner-header-title">실시간 과매도 / 공포 지수 모니터</div>
+    <div class="scanner-header-top">
+        <div class="scanner-header-title">
+            <span class="scanner-live-dot"></span>
+            실시간 과매도 / 공포 지수 모니터
+        </div>
+        <a href="?view=backtest" target="_self" class="cta-backtest">
+            <span class="hover-underline-animation">백테스트 성과 분석</span>
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+    </div>
     <div class="scanner-header-desc">주요 대형주 유니버스 대상 시장별 과매도 강도 상위 10개 종목 스캔 결과입니다.</div>
     <div class="scanner-grid">{kospi_html}{kosdaq_html}</div>
     """

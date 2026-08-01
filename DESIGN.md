@@ -1,139 +1,127 @@
 ## Overview
 
-PostHog's marketing system is built on the visual contradiction at the heart of the brand: a serious open-source product analytics platform rendered as if it were a friendly engineering sketchbook. The chrome runs on a warm cream canvas (`{colors.canvas}` — `#eeefe9`) — not white — and every page is dotted with hand-drawn hedgehog mascots in lab coats, lounge chairs, terminals, and reading glasses, scattered across the layout like marginalia in a textbook. Type sits in IBM Plex Sans Variable at olive-gray (`{colors.body}` — `#4d4f46`) for body and deep olive-charcoal (`{colors.ink}` — `#23251d`) for headlines, with weights stepped tightly between 400, 600, 700, and 800 to create hierarchy without color. The single saturated yellow-orange pill (`{colors.primary}` — `#f7a501`) is the brand's only loud chromatic moment; everything else is cream, olive, white card, and state-driven indicators.
+개미반대로(Ant-Contra)의 비주얼 시스템은 **토스(Toss)류 국내 핀테크 대시보드 문법**을 따른다 — 연한 블루-그레이 캔버스(`{colors.bg}` — `#f4f6fb`) 위에 순백 카드(`{colors.surface}` — `#ffffff`)를 얹고, 얇은 헤어라인 보더와 은은한 그림자로만 위계를 만드는 플랫하고 조용한 디자인이다. 타이포는 Pretendard 한 서체로 통일하며, 국내 증권 관행에 따라 상승은 빨강(`#f04452`) 하락은 파랑(`#3182f6`)을 쓴다. 지표/신호 카드는 좌측 4px 컬러 레일(초록=포착/골드=중립/빨강=미포착)로 상태를 표시하고, 게이지·배지 등 핵심 순간에는 오렌지(`#FF7A2F`, 로고·VWAP 라인) 포인트 컬러를 아껴서 사용한다. 카드 다수에 `backdrop-filter: blur(10px)` 반투명 유리 질감을 적용해 데이터 밀도가 높은 화면에서도 무겁지 않게 보이도록 한다.
 
-The system features a **data-dense indicator layout**: main dashboard and analysis cards sit on pure white card surfaces (`{colors.surface-card}`), complemented by persistent sidebar/rail modules that maintain structural state accents (Green captured rails, Yellow caution rails, soft blue target blocks, and light yellow alert containers).
+**핵심 특징**
 
-Sections stack at `{spacing.section}` (80px) rhythm with cream canvas continuing edge-to-edge between them. There are no decorative gradients, no atmospheric mesh backgrounds, and no full-bleed dark hero chapters; the cream canvas runs uninterrupted top to bottom.
-
-**Key Characteristics:**
-
-- Warm cream canvas (`{colors.canvas}` — #eeefe9) end-to-end with no surface alternation between sections — the page is one continuous sheet
-- Single yellow-orange CTA pill (`{colors.primary}` — #f7a501) with deep olive text (`{colors.on-primary}`) — the brand's primary action color
-- IBM Plex Sans Variable across every text role with weights 400/500/600/700/800 — no other typeface in the system
-- State-driven card indicator system featuring left-border accent rails (`{colors.accent-green}` for captured/positive indicators, `{colors.primary-active}` for neutral/caution indicators)
-- 4–8px radius card vocabulary: `{rounded.md}` (6px) for most components, `{rounded.lg}` (8px) for select containers, fully rounded for pill chips
+- 연한 블루-그레이 캔버스(`#f4f6fb`) + 순백 카드(`#ffffff`), 헤어라인 보더 `#e2e8f0`로만 구분
+- 상승=빨강(`#f04452`) / 하락=파랑(`#3182f6`) — 국내 주식앱 관행, 색맹 대응 위해 항상 ▲▼ 화살표·텍스트 병기
+- 좌측 4px 상태 레일: 초록(`#16a34a`)=포착 · 골드(`#ca8a04`)=중립 · 빨강(`#dc2626`)=미포착
+- Pretendard 단일 서체, 굵기 500~900 폭넓게 사용해 숫자 강조
+- 반투명 유리 카드(`blur(10px)` + `rgba(255,255,255,0.05~0.3)` 그라디언트 보더) — 스캐너/티커 카드 한정
+- 라운드는 8~16px 구간, 배지·태그는 완전 라운드(pill)
 
 ## Colors
 
-### Brand & Accent
+### Base Canvas & Surface
 
-- **PostHog Yellow** (`{colors.primary}` — `#f7a501`): universal primary CTA, warning badge outline, neutral indicator pills, and primary action buttons.
-- **Yellow Pressed** (`{colors.primary-pressed}` — `#dd9001`): pressed state for primary pill actions.
-- **Yellow Active** (`{colors.primary-active}` — `#b17816`): gold-toned border accent for neutral/caution state cards and active indicators.
-
-### Surface
-
-- **Canvas** (`{colors.canvas}` — `#eeefe9`): warm cream page background running end-to-end.
-- **Soft Surface** (`{colors.surface-soft}` — `#e5e7e0`): secondary button fill, tab strip backgrounds, inline chip backgrounds.
-- **Surface Card** (`{colors.surface-card}` — `#ffffff`): true white card and tile background sitting on top of the cream canvas.
-- **Surface Doc** (`{colors.surface-doc}` — `#fcfcfa`): faintly cream-warm white used inside doc/detail cards.
-- **Surface Alert Soft** (`{colors.surface-alert-soft}` — `#fdf8e8`): light yellow container background for alert/caution rail cards and indicator summaries.
-- **Surface Blue Soft** (`{colors.surface-blue-soft}` — `#eff6ff`): soft blue container background for risk-reward (R:R) and target price blocks.
-- **Surface Dark** (`{colors.surface-dark}` — `#23251d`): deep olive-charcoal used for inverted dark code blocks.
-- **Hairline** (`{colors.hairline}` — `#bfc1b7`): 1px card border, table rule, and container borders.
-- **Hairline Soft** (`{colors.hairline-soft}` — `#dcdfd2`): in-card row dividers and subtle inset rules.
+- **Background** (`#f4f6fb`): 앱 전체 배경.
+- **Surface** (`#ffffff`): 카드/패널 기본 배경.
+- **Border / Hairline** (`#e2e8f0`): 카드 보더, 구분선. 투명도 조절 시 `{border}66` 형태로 사용.
 
 ### Text
 
-- **Ink** (`{colors.ink}` — `#23251d`): headlines, bold metrics, button text — deep olive-charcoal.
-- **Body** (`{colors.body}` — `#4d4f46`): default paragraph text, indicator descriptions, body copy.
-- **Mute** (`{colors.mute}` — `#6c6e63`): metadata, timestamps, secondary labels.
-- **Ash** (`{colors.ash}` — `#9b9c92`): disabled-state text and lowest-emphasis utility text.
+- **Text Main** (`#1a1d29`): 헤드라인, 가격, 강조 숫자.
+- **Text Sub** (`#6b7280` / `#9ca3af`): 라벨, 보조 설명, 타임스탬프.
 
-### Semantic & Indicators
+### Price / Direction (국내 증권 관행 — 상승 빨강 · 하락 파랑)
 
-- **Positive / Captured Green** (`{colors.accent-green}` — `#10b981` / `#059669`): left rail accent border on captured indicators, success badges, and positive score callouts.
-- **Caution / Neutral Gold** (`{colors.accent-gold}` — `#d97706`): left rail accent border on neutral indicators, caution badges, and alert borders.
-- **Alert Red** (`{colors.accent-red}` — `#ef4444`): high/low price markers, extreme loss/fear labels, and alert highlights.
-- **Info Blue** (`{colors.accent-blue}` — `#2563eb`): price percentage movement, risk-reward metrics, and informational anchor links.
+- **Up / 상승** (`#f04452`)
+- **Down / 하락** (`#3182f6`) — 링크·정보성 액센트(ACCENT)로도 겸용.
+
+### Brand Accent
+
+- **Primary Orange** (`#ff7a2f`): 로고·VWAP(개미 평단선) 강조, 매매전략 카드 레일.
+
+### Status / Signal (지표 신호 3단계)
+
+- **Green — 포착** : bg `#dcfce7` · border/배지 `#16a34a`
+- **Yellow — 중립** : bg `#fef3c7` · border/배지 `#ca8a04`
+- **Red — 미포착** : bg `#fee2e2` · border/배지 `#dc2626`
+
+### Fear / Greed 게이지 5단계 (통합 비명 지수)
+
+| 구간              | 배지 bg   | 배지 text |
+| ----------------- | --------- | --------- |
+| 극단적 공포 (≥80) | `#fee2e2` | `#dc2626` |
+| 공포 (≥60)        | `#ffedd5` | `#ea580c` |
+| 중립 (≥40)        | `#fef9c3` | `#ca8a04` |
+| 탐욕 (≥20)        | `#ecfccb` | `#65a30d` |
+| 극단적 탐욕 (<20) | `#dcfce7` | `#16a34a` |
+
+게이지 아크 그라디언트: `#4ade80 → #a3e635 → #facc15 → #fb923c → #f87171` (좌:안전 → 우:위험), 바늘 색 `#1e293b`.
+
+### 시장 배지 (KOSPI / KOSDAQ)
+
+- **KOSPI**: bg `#eff6ff` · text `#1d4ed8` · border `#bfdbfe`
+- **KOSDAQ**: bg `#ecfdf5` · text `#047857` · border `#a7f3d0`
+
+### 랭킹 배지 (스캐너 1~3위)
+
+- 1위: bg `#fef3c7` text `#d97706` / 2위: bg `#f1f5f9` text `#475569` / 3위: bg `#ffedd5` text `#c2410c`
 
 ## Typography
 
-### Hierarchy
+전체 서체: **Pretendard** (CDN, `-apple-system, sans-serif` 폴백). 숫자 위계는 크기보다 **굵기(500~900)** 차이로 강조하는 경우가 많다.
 
-| Token                           | Size | Weight | Line Height | Letter Spacing | Use                                             |
-| ------------------------------- | ---- | ------ | ----------- | -------------- | ----------------------------------------------- |
-| `{typography.display-xl}`       | 36px | 700    | 1.5         | 0              | Main hero title / Stock current price metric    |
-| `{typography.display-lg}`       | 24px | 800    | 1.33        | -0.6px         | Section headline, large gauge score value       |
-| `{typography.heading-lg}`       | 21px | 700    | 1.4         | -0.5px         | Sub-section heading, main card H2               |
-| `{typography.heading-md}`       | 20px | 700    | 1.4         | 0              | Card title, indicator signal name               |
-| `{typography.heading-sm}`       | 18px | 700    | 1.5         | 0 (uppercase)  | Category eyebrows ("TODAY'S FEAR TOP 10")       |
-| `{typography.heading-sm-mixed}` | 18px | 600    | 1.56        | 0              | Card title in mixed-case                        |
-| `{typography.body-md}`          | 16px | 400    | 1.5         | 0              | Default body text, description copy             |
-| `{typography.body-strong}`      | 16px | 600    | 1.5         | 0              | Emphasized label, active tab title              |
-| `{typography.body-sm}`          | 15px | 400    | 1.71        | 0              | Indicator detail explanation, news article text |
-| `{typography.body-xs}`          | 14px | 500    | 1.43        | 0              | Sidebar list item, timestamp, metadata          |
-| `{typography.caption-xs}`       | 12px | 600    | 1.33        | 0              | Inline status badges ("포착", "중립")           |
-| `{typography.button-md}`        | 14px | 700    | 1.5         | 0              | Primary/secondary action button label           |
+| 역할          | 크기        | 굵기    | 사용처                                 |
+| ------------- | ----------- | ------- | -------------------------------------- |
+| 메인 가격     | 34px        | 900     | 종목 상세 현재가                       |
+| 게이지 스코어 | 38px        | 800     | 통합 비명 지수 중앙값                  |
+| 카드 제목     | 19px        | 800     | 회사명 헤더                            |
+| 섹션 타이틀   | 14~16px     | 700~800 | "매매 전략", "실시간 과매도 모니터" 등 |
+| 지표 라벨     | 12.5~13.5px | 600~800 | 지표 카드 label                        |
+| 서브 텍스트   | 10.5~12px   | 500~600 | desc, 타임스탬프, 코드번호             |
+| 배지/뱃지     | 10~11px     | 700~800 | 상태 배지, 랭킹                        |
 
 ## Layout & Structure
 
-### Spacing System
-
-- **Base unit:** 8px
-- **Tokens:** `{spacing.xxs}` (2px) · `{spacing.xs}` (4px) · `{spacing.sm}` (8px) · `{spacing.md}` (12px) · `{spacing.lg}` (16px) · `{spacing.xl}` (24px) · `{spacing.section}` (80px).
-- **Rhythm:** Standard card grids use `{spacing.lg}` (16px) gutters; card internal padding sits at `{spacing.lg}` (16px) to `{spacing.xl}` (24px).
-
-### Card Accent Rails
-
-- **Captured Rail Card (`indicator-card-captured`):** 1px `{colors.hairline}` border with a 4px solid `{colors.accent-green}` left accent rail.
-- **Neutral Rail Card (`indicator-card-neutral`):** 1px `{colors.hairline}` border with a 4px solid `{colors.accent-gold}` left accent rail.
-- **Sidebar Alert Card (`sidebar-card-alert`):** 1px solid `{colors.primary-active}` border with `{colors.surface-alert-soft}` background fill.
+- **그리드**: 상세 대시보드는 메인(6) : 사이드바(4) 2컬럼. 홈 스캐너는 `repeat(auto-fit, minmax(290px,1fr))`, 티커는 데스크톱 4열 → 태블릿(≤900px) 2열 → 모바일(≤550px) 1열 반응형.
+- **카드 보더 반경**: 일반 카드 10~12px, 게이지/대형 패널 16px, 배지·태그는 fully rounded.
+- **카드 그림자**: 기본 `0 1px 3px rgba(0,0,0,0.03~0.05)`, hover 시 `0 8~10px 20~24px rgba(0,0,0,0.08)` + `translateY(-3px)`.
+- **유리 카드**(티커/스캐너 패널 한정): `linear-gradient(180deg, rgba(255,255,255,0.05)→rgba(255,255,255,0.015))` 배경 + `backdrop-filter: blur(10px)` + 상단 보더만 `rgba(255,255,255,0.3)`로 하이라이트.
+- **좌측 상태 레일**: 지표/신호 카드는 4px solid 컬러 바를 좌측에 붙여 포착/중립/미포착을 구분 (색상은 Status 참조).
 
 ## Components
 
-### Buttons & Pills
+### 가격/변동 표시
 
-**`button-primary`**
+- 상승·하락은 항상 `▲/▼` 화살표 + `%` 수치 + 색상 3중 표기 (색맹 대응).
+- 변동률 배지: bg는 반대색 계열 tint(`#fee2e2`/`#dbeafe`), text는 direction 컬러.
 
-- Background `{colors.primary}` (`#f7a501`), text `{colors.on-primary}` (`#23251d`), type `{typography.button-md}`, height `40px`, rounded `{rounded.md}`.
+### 통합 비명 지수 게이지 (`sidebar-gauge`)
 
-**`badge-captured`**
+- 흰 카드, 반원형 SVG 아크(그라디언트), 중앙에 38px/800 점수, 하단에 5단계 상태 배지 + 코멘트 + 전일 대비 텍스트.
 
-- Background `{colors.accent-green}`, text `#ffffff`, type `{typography.caption-xs}`, padding `4px 10px`, rounded `{rounded.full}`. Label: "포착".
+### 지표 신호 카드 (`indicator-card`)
 
-**`badge-neutral`**
+- 흰 배경, 1px `#e2e8f0` 보더, 좌측 4px 상태 레일, 아이콘 칩(원형, status bg) + 라벨 + 설명 + 우측 상태 배지("포착"/"중립"/"미포착").
+- 미포착·중립 지표는 기본 접힘(아코디언), 배지 카운트로 red/yellow 개수 표시.
 
-- Background `{colors.accent-gold}`, text `#ffffff`, type `{typography.caption-xs}`, padding `4px 10px`, rounded `{rounded.full}`. Label: "중립".
+### 손익비 타점 카드 (`risk-reward-card`)
 
-### Indicator & Metric Cards
+- 흰 카드, 헤더에 R:R 비율 + 판정(우수/양호/미흡/산출불가), 하단은 손절가/1차·2차 목표가를 회색 배경(`{bg}`) 행 리스트로 나열.
 
-**`indicator-card-captured`**
+### 스캐너 리스트 (`scanner-panel`)
 
-- Container: Background `{colors.surface-card}`, border 1px solid `{colors.hairline}`, left rail 4px solid `{colors.accent-green}`, padding `16px 20px`, rounded `{rounded.md}`.
-- Layout: Icon avatar left, Indicator Title (`{typography.heading-md}`), status badge right, subtitle with parameter value (`{typography.body-strong}`), description (`{typography.body-sm}`).
+- 유리 카드 컨테이너, 헤더에 시장 배지, 행마다 랭킹뱃지+종목명/코드+등락률+점수배지, hover 시 우측으로 살짝 슬라이드.
 
-**`indicator-card-neutral`**
+### 배지 (공통)
 
-- Container: Background `{colors.surface-card}`, border 1px solid `{colors.hairline}`, left rail 4px solid `{colors.accent-gold}`, padding `16px 20px`, rounded `{rounded.md}`.
-
-**`sidebar-metric-card`**
-
-- Container: Background `{colors.surface-card}`, border 1px solid `{colors.hairline}`, padding `20px`, rounded `{rounded.md}`.
-- Layout: Title top, prominent numerical score right (`{typography.display-lg}` in `{colors.accent-green}` or `{colors.ink}`), secondary progress bar or status description below.
-
-**`sidebar-card-alert`**
-
-- Container: Background `{colors.surface-alert-soft}`, border 1px solid `{colors.primary-active}`, padding `16px`, rounded `{rounded.md}`.
-- Layout: Top warning icon + message (`{typography.body-strong}`), bottom action button/link (`{colors.primary-active}`).
-
-**`risk-reward-card`**
-
-- Container: Background `{colors.surface-card}`, border 1px solid `{colors.hairline}`, padding `20px`, rounded `{rounded.md}`.
-- Contains nested `{colors.surface-blue-soft}` summary block for R:R metrics and target values.
+- pill 형태, padding `2~4px 7~10px`, font-weight 700~800, size 10~12px.
 
 ## Do's and Don'ts
 
 ### Do
 
-- Keep `{colors.canvas}` (`#eeefe9`) as the page background.
-- Preserve the 4px left accent rail system for indicator state differentiation (Green = Captured, Gold = Neutral/Caution).
-- Maintain white `{colors.surface-card}` for main data cards and sidebar cards sitting on cream canvas.
-- Use `{colors.surface-alert-soft}` for alert summary blocks in the right rail.
+- 배경은 `#f4f6fb`, 카드는 `#ffffff`만 사용해 두 톤으로 위계 유지.
+- 상승=빨강/하락=파랑 원칙을 모든 가격·등락 요소에 일관 적용하고 화살표·텍스트를 항상 병기.
+- 지표 신호는 좌측 컬러 레일 + 우측 배지의 이중 코딩 유지 (색상만으로 구분하지 않기).
+- 카드 보더는 항상 `#e2e8f0` 1px, 그림자는 은은하게(0.03~0.08 알파) 유지.
 
 ### Don't
 
-- Don't replace the warm cream canvas with pure white.
-- Don't change sidebar card backgrounds or alter existing right rail colors.
-- Don't use drop shadows on cards; maintain flat design with hairline borders and state accent rails.
+- 크림/올리브 계열(PostHog류) 팔레트를 쓰지 않는다 — 이 프로젝트의 브랜드가 아니다.
+- 카드에 진한 드롭섀도우나 두꺼운(2px+) 컬러 보더를 넣지 않는다.
+- 상승/하락을 색상만으로 표기하지 않는다 (접근성 요구사항, PRODUCT.md 명시).
+- 티커/스캐너 유리 카드 스타일을 지표 카드 등 다른 컴포넌트로 확대 적용하지 않는다 — 유리 효과는 홈 화면 한정.

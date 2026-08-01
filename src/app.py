@@ -38,6 +38,17 @@ from ui.index_ticker import render_index_ticker
 from constants import THEME, ACCENT
 from streamlit_searchbox import st_searchbox
 
+# 상단 헤더, 배포 버튼, 메뉴 숨기기
+hide_streamlit_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    .stAppDeployButton {display:none;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # ── [원복] 아코디언(stExpander) 투명화 및 테두리 제거 CSS ────────────────────
 st.markdown(f"""
 <style>

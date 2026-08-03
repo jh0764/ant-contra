@@ -138,7 +138,6 @@ st.markdown(
 html, body, [class*="css"] {{ font-family: 'Pretendard', -apple-system, sans-serif; }}
 .stApp {{
     background:
-        /* 붉은빛 불투명도(0.12 -> 0.04)와 퍼짐 범위(40% -> 25%)를 축소 */
         radial-gradient(circle at 15% 20%, rgba(255, 122, 47, 0.07) 0%, transparent 25%),
         radial-gradient(circle at 85% 15%, rgba(49, 130, 246, 0.12) 0%, transparent 40%),
         radial-gradient(circle at 70% 85%, rgba(240, 68, 82, 0.02) 0%, transparent 30%),
@@ -333,7 +332,7 @@ selected_item = st_searchbox(
     lambda term: search_companies(term, KRX_LISTING),
     default=st.session_state.get("last_selected", None),
     key="stock_searchbox",
-    placeholder="종목명 또는 종목코드 입력 (예: 삼성전자, 005930)",
+    placeholder="종목명 또는 종목코드 입력(예: 삼성전자)",
 )
 
 

@@ -1,7 +1,13 @@
 import math
 from ui.common import html_block
 
-def render_wave_gauge(score, label_top="통합 비명 지수", comment_text="역발상 매수 최적 구간 — 군중 공포 극대화", diff_text="전일과 동일"):
+
+def render_wave_gauge(
+    score,
+    label_top="통합 비명 지수",
+    comment_text="역발상 매수 최적 구간 — 군중 공포 극대화",
+    diff_text="전일과 동일",
+):
     score_val = max(0, min(100, float(score)))
 
     if score_val >= 80:
@@ -37,13 +43,22 @@ def render_wave_gauge(score, label_top="통합 비명 지수", comment_text="역
     base_cy = cy - base_len * math.sin(angle_rad)
 
     wing_r = 5.5
-    p1_x = base_cx + wing_r * math.cos(angle_rad + math.pi/2)
-    p1_y = base_cy - wing_r * math.sin(angle_rad + math.pi/2)
-    p2_x = base_cx + wing_r * math.cos(angle_rad - math.pi/2)
-    p2_y = base_cy - wing_r * math.sin(angle_rad - math.pi/2)
+    p1_x = base_cx + wing_r * math.cos(angle_rad + math.pi / 2)
+    p1_y = base_cy - wing_r * math.sin(angle_rad + math.pi / 2)
+    p2_x = base_cx + wing_r * math.cos(angle_rad - math.pi / 2)
+    p2_y = base_cy - wing_r * math.sin(angle_rad - math.pi / 2)
 
-    html_block(f"""
-<div style="position:relative; overflow:hidden; background:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.6); border-radius:20px; padding:18px 16px; text-align:center; backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); box-shadow: 0 8px 24px rgba(31,38,135,0.08), inset 0 1px 0 rgba(255,255,255,0.9); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing:border-box;">
+    html_block(
+        f"""
+<style>
+    /* PC/데스크톱 화면에서는 영향이 없고, 768px 이하 모바일 모드에서만 위쪽에 18px 여백 부여 */
+    @media (max-width: 768px) {{
+        .wave-gauge-container {{
+            margin-top: 18px !important;
+        }}
+    }}
+</style>
+<div class="wave-gauge-container" style="position:relative; overflow:hidden; background:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.6); border-radius:20px; padding:18px 16px; text-align:center; backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); box-shadow: 0 8px 24px rgba(31,38,135,0.08), inset 0 1px 0 rgba(255,255,255,0.9); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing:border-box;">
     <div style="position:absolute; top:0; left:0; right:0; height:40%; background:linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%); pointer-events:none;"></div>
     <!-- 상단 타이틀 -->
     <div style="font-size:14px; font-weight:700; color:#111827; margin-bottom:10px; text-align:left; padding-left:2px;">{label_top}</div>
@@ -90,4 +105,5 @@ def render_wave_gauge(score, label_top="통합 비명 지수", comment_text="역
         </div>
     </div>
 </div>
-""")
+"""
+    )

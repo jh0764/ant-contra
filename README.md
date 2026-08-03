@@ -14,7 +14,8 @@
 
 ### 종목 상세 — 비명지수 게이지 · 13개 지표 · 손익비 타점
 
-![종목 상세](docs/screenshots/detail.png)
+![종목 상세1](docs/screenshots/search1.png)
+![종목 상세2](docs/screenshots/search2.png)
 
 ### 백테스트 — 점수구간별 승률/수익률 검증
 

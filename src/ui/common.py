@@ -1,20 +1,24 @@
 import streamlit as st
 from constants import THEME
 
+
 def html_block(content: str):
     lines = [line.lstrip() for line in content.strip("\n").splitlines()]
     st.markdown("\n".join(lines), unsafe_allow_html=True)
 
-def render_tab_group(options, key, default_index=0, size="md", selected_color=None,
-                      margin_bottom="0px"):
+
+def render_tab_group(
+    options, key, default_index=0, size="md", selected_color=None, margin_bottom="0px"
+):
     scope = f"{key}_scope"
-    selected_color = selected_color or THEME['text_main']
+    selected_color = selected_color or THEME["text_main"]
     if size == "sm":
         pad, font_size, radius, group_radius = "2px 8px", "9px", "5px", "7px"
     else:
         pad, font_size, radius, group_radius = "4px 14px", "12px", "7px", "9px"
-        
-    st.markdown(f"""
+
+    st.markdown(
+        f"""
     <style>
     div.st-key-{scope} {{
         margin-bottom:{margin_bottom} !important;
@@ -79,17 +83,25 @@ def render_tab_group(options, key, default_index=0, size="md", selected_color=No
         white-space:nowrap !important;
     }}
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     with st.container(key=scope):
         result = st.pills(
-            label="", options=options, default=options[default_index],
-            selection_mode="single", label_visibility="collapsed", key=key
+            label=key,
+            options=options,
+            default=options[default_index],
+            selection_mode="single",
+            label_visibility="collapsed",
+            key=key,
         )
     return result if result else options[default_index]
 
+
 def render_flex_row(row_key, gap="12px", margin_bottom="8px"):
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <style>
     div.st-key-{row_key} > div[data-testid="stVerticalBlock"] {{
         display:flex !important;
@@ -108,5 +120,7 @@ def render_flex_row(row_key, gap="12px", margin_bottom="8px"):
         margin-bottom:{margin_bottom} !important;
     }}
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
     return st.container(key=row_key)

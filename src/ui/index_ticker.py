@@ -74,26 +74,42 @@ def render_index_ticker(results=None, usdkrw_data=None):
     }}
 
     .ticker-card {{
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
-        border: 1px solid {THEME['border']};
-        border-top: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 18px;
         padding: 12px 14px;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        box-shadow:
+            0 8px 24px rgba(31, 38, 135, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.2);
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
         box-sizing: border-box;
-        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    }}
+    
+    .ticker-card::before {{
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
     }}
 
     .ticker-card:hover {{
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        border-color: rgba(200, 200, 200, 0.4);
+        transform: translateY(-4px);
+        box-shadow:
+            0 14px 32px rgba(31, 38, 135, 0.14),
+            inset 0 1px 0 rgba(255, 255, 255, 1),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.8);
     }}
 
     .ticker-info {{

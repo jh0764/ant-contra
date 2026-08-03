@@ -29,7 +29,7 @@ def render_tab_group(options, key, default_index=0, size="md", selected_color=No
         width:fit-content !important;
     }}
     div.st-key-{scope} div[data-baseweb="button-group"] {{
-        background:{THEME['border']}66 !important;
+        background:rgba(15,23,42,0.05) !important;
         border-radius:{group_radius} !important;
         padding:2px !important;
         gap:2px !important;
@@ -66,8 +66,8 @@ def render_tab_group(options, key, default_index=0, size="md", selected_color=No
         white-space:nowrap !important;
     }}
     div.st-key-{scope} button[data-testid="stBaseButton-pillsActive"] {{
-        background:{THEME['surface']} !important;
-        box-shadow:0 1px 3px rgba(0,0,0,0.12) !important;
+        background:rgba(255,255,255,0.9) !important;
+        box-shadow:0 2px 8px rgba(31,38,135,0.08) !important;
     }}
     div.st-key-{scope} button[data-testid="stBaseButton-pillsActive"] p {{
         font-size:{font_size} !important;

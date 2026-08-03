@@ -8,27 +8,22 @@ def render_wave_gauge(score, label_top="통합 비명 지수", comment_text="역
         bg_badge = "#fee2e2"
         text_badge = "#dc2626"
         status_text = "극단적 공포"
-        status_emoji = "🔥"
     elif score_val >= 60:
         bg_badge = "#ffedd5"
         text_badge = "#ea580c"
         status_text = "공포"
-        status_emoji = "😨"
     elif score_val >= 40:
         bg_badge = "#fef9c3"
         text_badge = "#ca8a04"
         status_text = "중립"
-        status_emoji = "😐"
     elif score_val >= 20:
         bg_badge = "#ecfccb"
         text_badge = "#65a30d"
         status_text = "탐욕"
-        status_emoji = "🤑"
     else:
         bg_badge = "#dcfce7"
         text_badge = "#16a34a"
         status_text = "극단적 탐욕"
-        status_emoji = "🚀"
 
     cx, cy, r = 140, 125, 92
     angle_deg = 180 - (score_val / 100.0 * 180)
@@ -48,7 +43,8 @@ def render_wave_gauge(score, label_top="통합 비명 지수", comment_text="역
     p2_y = base_cy - wing_r * math.sin(angle_rad - math.pi/2)
 
     html_block(f"""
-<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 16px; text-align:center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing:border-box;">
+<div style="position:relative; overflow:hidden; background:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.6); border-radius:20px; padding:18px 16px; text-align:center; backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); box-shadow: 0 8px 24px rgba(31,38,135,0.08), inset 0 1px 0 rgba(255,255,255,0.9); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing:border-box;">
+    <div style="position:absolute; top:0; left:0; right:0; height:40%; background:linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%); pointer-events:none;"></div>
     <!-- 상단 타이틀 -->
     <div style="font-size:14px; font-weight:700; color:#111827; margin-bottom:10px; text-align:left; padding-left:2px;">{label_top}</div>
     
@@ -84,7 +80,7 @@ def render_wave_gauge(score, label_top="통합 비명 지수", comment_text="역
     <!-- 하단 코멘트 영역 -->
     <div style="margin-top:12px; padding-top:12px; border-top:1px solid #f3f4f6;">
         <div style="background:{bg_badge}; border-radius:10px; padding:4px 10px; display:inline-block; margin-bottom:6px;">
-            <span style="font-size:11.5px; font-weight:700; color:{text_badge};">{status_emoji} {status_text}</span>
+            <span style="font-size:11.5px; font-weight:700; color:{text_badge};">{status_text}</span>
         </div>
         <div style="font-size:12px; font-weight:500; color:#4b5563; margin-bottom:3px; word-break:keep-all; line-height:1.35; letter-spacing:-0.2px;">
             {comment_text}

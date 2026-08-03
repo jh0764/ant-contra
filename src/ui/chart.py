@@ -11,11 +11,15 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
     max_idx = close_cleaned.idxmax()
     min_idx = close_cleaned.idxmin()
 
-    volumes = volume_series.tolist() if volume_series is not None else [None] * len(close_cleaned)
+    volumes = (
+        volume_series.tolist()
+        if volume_series is not None
+        else [None] * len(close_cleaned)
+    )
     chart_points = [
-            {"date": str(d), "price": int(p), "volume": (int(v) if v is not None else None)}
-            for d, p, v in zip(dates_korean.tolist(), close_cleaned.tolist(), volumes)
-        ]
+        {"date": str(d), "price": int(p), "volume": (int(v) if v is not None else None)}
+        for d, p, v in zip(dates_korean.tolist(), close_cleaned.tolist(), volumes)
+    ]
     if volume_series is not None:
         vol_list = volume_series.reset_index(drop=True).tolist()
         for i, pt in enumerate(chart_points):
@@ -119,8 +123,8 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 return priceTop + (1 - (price - minP) / range) * usableH;
             }}
             function anchorFor(x) {{
-                if (x < padX + 45) return "start";
-                if (x > W - 45) return "end";
+                if (x < padX + 70) return "start";
+                if (x > W - 70) return "end";
                 return "middle";
             }}
             function fmtDate(dstr) {{
@@ -257,7 +261,10 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
                 maxLabel.setAttribute("text-anchor", anchorFor(maxX));
                 maxLabel.textContent = "최고 " + data[maxIdx].price.toLocaleString() + "원";
 
-                minLabel.setAttribute("x", minX);
+                const minAnchor = anchorFor(minX);
+                const minLabelX = minAnchor === "start" ? Math.max(minX, padX + 4) : minX;
+                minLabel.setAttribute("x", minLabelX);
+                minLabel.setAttribute("text-anchor", minAnchor);
                 minLabel.setAttribute("y", labelsClose ? Math.min(priceBottom - 6, minY + 34) : Math.min(priceBottom - 6, minY + 20));
                 minLabel.setAttribute("text-anchor", anchorFor(minX));
                 minLabel.textContent = "최저 " + data[minIdx].price.toLocaleString() + "원";
@@ -319,6 +326,7 @@ def render_stock_chart(dates_korean, close_cleaned, volume_series=None):
 
     components.html(chart_html, height=420)
 
+
 def render_candle_chart(df, key_prefix="candle"):
     display_df = df.reset_index(drop=True)
     n = len(display_df)
@@ -327,7 +335,8 @@ def render_candle_chart(df, key_prefix="candle"):
     period_labels = list(period_map.keys())
 
     with render_flex_row(f"{key_prefix}_row", margin_bottom="4px"):
-        html_block(f"""
+        html_block(
+            f"""
         <div style="display:flex; gap:12px; align-items:center;">
           <span style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:{THEME['text_sub']};">
             <span style="width:14px; height:8px; background:rgba(240,68,82,0.25); border-radius:2px;"></span>일목구름대
@@ -339,26 +348,40 @@ def render_candle_chart(df, key_prefix="candle"):
             <span style="width:14px; height:0; border-top:1.5px dashed #94a3b8;"></span>볼린저 밴드
           </span>
         </div>
-        """)
-        current = render_tab_group(period_labels, key=f"{key_prefix}_period_sel",
-                                    default_index=1, size="sm", selected_color=THEME['text_main'],
-                                    margin_bottom="-8px")
+        """
+        )
+        current = render_tab_group(
+            period_labels,
+            key=f"{key_prefix}_period_sel",
+            default_index=1,
+            size="sm",
+            selected_color=THEME["text_main"],
+            margin_bottom="-8px",
+        )
 
     selected_bars = period_map.get(current, period_map[period_labels[1]])
     start_idx = max(0, n - selected_bars)
 
-    ma20 = display_df['Close'].rolling(20).mean()
-    std20 = display_df['Close'].rolling(20).std()
+    ma20 = display_df["Close"].rolling(20).mean()
+    std20 = display_df["Close"].rolling(20).std()
     bb_upper = ma20 + 2 * std20
     bb_lower = ma20 - 2 * std20
 
-    typical = (display_df['High'] + display_df['Low'] + display_df['Close']) / 3
-    vwap20 = (typical * display_df['Volume']).rolling(20).sum() / display_df['Volume'].rolling(20).sum()
+    typical = (display_df["High"] + display_df["Low"] + display_df["Close"]) / 3
+    vwap20 = (typical * display_df["Volume"]).rolling(20).sum() / display_df[
+        "Volume"
+    ].rolling(20).sum()
 
-    conv = (display_df['High'].rolling(9).max() + display_df['Low'].rolling(9).min()) / 2
-    base = (display_df['High'].rolling(26).max() + display_df['Low'].rolling(26).min()) / 2
+    conv = (
+        display_df["High"].rolling(9).max() + display_df["Low"].rolling(9).min()
+    ) / 2
+    base = (
+        display_df["High"].rolling(26).max() + display_df["Low"].rolling(26).min()
+    ) / 2
     span_a = ((conv + base) / 2).shift(26)
-    span_b = ((display_df['High'].rolling(52).max() + display_df['Low'].rolling(52).min()) / 2).shift(26)
+    span_b = (
+        (display_df["High"].rolling(52).max() + display_df["Low"].rolling(52).min()) / 2
+    ).shift(26)
     cloud_bull_a = span_a.where(span_a >= span_b)
     cloud_bull_b = span_b.where(span_a >= span_b)
     cloud_bear_a = span_a.where(span_a < span_b)
@@ -366,61 +389,146 @@ def render_candle_chart(df, key_prefix="candle"):
 
     fig = go.Figure()
 
-    fig.add_trace(go.Candlestick(
-        x=display_df['Date'],
-        open=display_df['Open'], high=display_df['High'],
-        low=display_df['Low'], close=display_df['Close'],
-        increasing_line_color=PRICE_COLOR['up'], increasing_fillcolor=PRICE_COLOR['up'],
-        decreasing_line_color=PRICE_COLOR['down'], decreasing_fillcolor=PRICE_COLOR['down'],
-        line=dict(width=1),
-        customdata=display_df[['Open', 'High', 'Low', 'Close']].values,
-        hovertemplate=(
-            "<b>%{x}</b><br>시가 %{customdata[0]:,.0f}원<br>고가 %{customdata[1]:,.0f}원"
-            "<br>저가 %{customdata[2]:,.0f}원<br>종가 %{customdata[3]:,.0f}원<extra></extra>"
-        ),
-        name="", showlegend=False,
-    ))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=bb_upper, mode="lines", line=dict(color="#94a3b8", width=1, dash="dot"), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=bb_lower, mode="lines", line=dict(color="#94a3b8", width=1, dash="dot"), fill="tonexty", fillcolor="rgba(148,163,184,0.08)", hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=vwap20, mode="lines", line=dict(color="#FF7A2F", width=1.4), name="VWAP", hovertemplate="%{x}<br>VWAP %{y:,.0f}원<extra></extra>", showlegend=False))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bull_a, mode="lines", line=dict(color="rgba(240,68,82,0.35)", width=0.8), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bull_b, mode="lines", line=dict(color="rgba(240,68,82,0.35)", width=0.8), fill="tonexty", fillcolor="rgba(240,68,82,0.12)", hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bear_a, mode="lines", line=dict(color="rgba(49,130,246,0.35)", width=0.8), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=display_df['Date'], y=cloud_bear_b, mode="lines", line=dict(color="rgba(49,130,246,0.35)", width=0.8), fill="tonexty", fillcolor="rgba(148,163,184,0.10)", hoverinfo="skip", showlegend=False))
+    fig.add_trace(
+        go.Candlestick(
+            x=display_df["Date"],
+            open=display_df["Open"],
+            high=display_df["High"],
+            low=display_df["Low"],
+            close=display_df["Close"],
+            increasing_line_color=PRICE_COLOR["up"],
+            increasing_fillcolor=PRICE_COLOR["up"],
+            decreasing_line_color=PRICE_COLOR["down"],
+            decreasing_fillcolor=PRICE_COLOR["down"],
+            line=dict(width=1),
+            customdata=display_df[["Open", "High", "Low", "Close"]].values,
+            hovertemplate=(
+                "<b>%{x}</b><br>시가 %{customdata[0]:,.0f}원<br>고가 %{customdata[1]:,.0f}원"
+                "<br>저가 %{customdata[2]:,.0f}원<br>종가 %{customdata[3]:,.0f}원<extra></extra>"
+            ),
+            name="",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=bb_upper,
+            mode="lines",
+            line=dict(color="#94a3b8", width=1, dash="dot"),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=bb_lower,
+            mode="lines",
+            line=dict(color="#94a3b8", width=1, dash="dot"),
+            fill="tonexty",
+            fillcolor="rgba(148,163,184,0.08)",
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=vwap20,
+            mode="lines",
+            line=dict(color="#FF7A2F", width=1.4),
+            name="VWAP",
+            hovertemplate="%{x}<br>VWAP %{y:,.0f}원<extra></extra>",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=cloud_bull_a,
+            mode="lines",
+            line=dict(color="rgba(240,68,82,0.35)", width=0.8),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=cloud_bull_b,
+            mode="lines",
+            line=dict(color="rgba(240,68,82,0.35)", width=0.8),
+            fill="tonexty",
+            fillcolor="rgba(240,68,82,0.12)",
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=cloud_bear_a,
+            mode="lines",
+            line=dict(color="rgba(49,130,246,0.35)", width=0.8),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=display_df["Date"],
+            y=cloud_bear_b,
+            mode="lines",
+            line=dict(color="rgba(49,130,246,0.35)", width=0.8),
+            fill="tonexty",
+            fillcolor="rgba(148,163,184,0.10)",
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
 
-    y_min = float(display_df['Low'].iloc[start_idx:].min())
-    y_max = float(display_df['High'].iloc[start_idx:].max())
+    y_min = float(display_df["Low"].iloc[start_idx:].min())
+    y_max = float(display_df["High"].iloc[start_idx:].max())
     y_pad = (y_max - y_min) * 0.04
 
-# x축 패딩 계산 (날짜 차이 기반 0.8일 간격 여유 확보)
-    start_date = pd.to_datetime(display_df['Date'].iloc[start_idx])
-    end_date = pd.to_datetime(display_df['Date'].iloc[-1])
-    
+    # x축 패딩 계산 (날짜 차이 기반 0.8일 간격 여유 확보)
+    start_date = pd.to_datetime(display_df["Date"].iloc[start_idx])
+    end_date = pd.to_datetime(display_df["Date"].iloc[-1])
+
     # x축 좌우 여유 시간 (약 18시간 = 0.75일 여유)
     x_pad = pd.Timedelta(hours=18)
 
     fig.update_layout(
-        height=400, margin=dict(l=0, r=20, t=8, b=0),
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        height=400,
+        margin=dict(l=0, r=20, t=8, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         xaxis_rangeslider_visible=False,
         showlegend=False,
-        font=dict(color=THEME['text_main'], size=11),
+        font=dict(color=THEME["text_main"], size=11),
         bargap=0.45,
         hovermode="x unified",
-        hoverlabel=dict(bgcolor=THEME['surface'], bordercolor=THEME['border'], font=dict(color=THEME['text_main'])),
+        hoverlabel=dict(
+            bgcolor=THEME["surface"],
+            bordercolor=THEME["border"],
+            font=dict(color=THEME["text_main"]),
+        ),
         xaxis=dict(
-            type='date',
-            tickformat='%m/%d',
-            showgrid=False, tickfont=dict(size=10.5),
+            type="date",
+            tickformat="%m/%d",
+            showgrid=False,
+            tickfont=dict(size=10.5),
             # 💡 양 끝에 x_pad만큼 여유 공간을 주어 캔들 잘림 방지
             range=[start_date - x_pad, end_date + x_pad],
         ),
         yaxis=dict(
-            gridcolor=THEME['border'], gridwidth=1,
-            tickformat=",.0f", ticksuffix="원",
+            gridcolor=THEME["border"],
+            gridwidth=1,
+            tickformat=",.0f",
+            ticksuffix="원",
             tickfont=dict(size=10.5),
             range=[y_min - y_pad, y_max + y_pad],
         ),
     )
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})

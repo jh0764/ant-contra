@@ -10,7 +10,7 @@
 
 ### 홈 — 실시간 시장 티커 + 과매도 스캐너
 
-![홈 화면](docs/screenshots/home.png)
+![홈 화면](docs/screenshots/home1.png)
 
 ### 종목 상세 — 비명지수 게이지 · 13개 지표 · 손익비 타점
 

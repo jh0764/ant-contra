@@ -99,7 +99,7 @@ if "home" in st.query_params:
     st.session_state.pop("last_selected", None)
     st.session_state.pop("dashboard_ready", None)
     st.query_params.clear()
-    st.rerun()
+    st.stop()
 
 if st.query_params.get("view") == "backtest":
     from ui.backtest_panel import render_backtest_page

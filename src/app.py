@@ -36,7 +36,7 @@ from ui.ticker_badge import render_company_header
 from ui.index_ticker import render_index_ticker
 
 from constants import THEME, ACCENT
-from streamlit_searchbox import st_searchbox
+from vendor.streamlit_searchbox import st_searchbox
 
 # 상단 헤더, 배포 버튼, 메뉴 숨기기
 hide_streamlit_style = """

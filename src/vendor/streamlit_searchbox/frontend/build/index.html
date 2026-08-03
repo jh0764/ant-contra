@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Streamlit Component</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Streamlit Component" />
+    <link rel="stylesheet" href="bootstrap.min.css" />
+    <script defer="defer" src="./static/js/main.a389820b.js"></script>
+
+    <style>
+      /* 1. 최외각 컨테이너 및 투명화 */
+      html,
+      body,
+      #root,
+      .App {
+        background-color: transparent !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      /* 2. 상단 입력창 (Control) */
+      div[class*="-control"] {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+      }
+
+      /* 3. [핵심] 인라인으로 주입되는 Emotion 스타일 강제 덮어쓰기 */
+      body div[class*="-menu"],
+      html body div[class*="-menu"],
+      div[class*="-menu"][style] {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+        margin-top: 8px !important;
+        padding: 6px !important;
+      }
+
+      /* 4. 기본 옵션 항목 스타일 (배경 투명/흰색) */
+      div[class*="-option"] {
+        color: #111827 !important;
+        font-size: 14px !important;
+        border-radius: 10px !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+      }
+
+      /* 5. [핵심] 호버 및 키보드 이동(Focused) 시 하이라이트 - 특이성 강화 및 인라인 스타일 덮어쓰기 */
+      html body div[class*="-option"]:hover,
+      html body div[class*="-option"][class*="--is-focused"],
+      div[class*="-option"][style]:hover,
+      div[class*="-option"][style][class*="--is-focused"] {
+        background: #f3f4f6 !important;
+        background-color: #f3f4f6 !important; /* 하이라이트 회색 */
+        color: #111827 !important;
+      }
+
+      /* 6. 이미 선택된 항목 (Selected) */
+      html body div[class*="-option"][class*="--is-selected"] {
+        background: #e5e7eb !important;
+        background-color: #e5e7eb !important;
+        color: #111827 !important;
+        font-weight: 600 !important;
+      }
+
+      /* 7. No Options 메시지 영역 */
+      div[class*="-noOptionsMessage"] {
+        color: #8e8e93 !important;
+        font-size: 14px !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      function applyHighlight() {
+        // 1. 현재 키보드 포커스가 맞춰진 항목의 ID 가져오기
+        const activeInput = document.querySelector(
+          "input[aria-activedescendant]"
+        );
+        const activeId = activeInput
+          ? activeInput.getAttribute("aria-activedescendant")
+          : null;
+
+        // 2. 모든 옵션 순회
+        const options = document.querySelectorAll('div[class*="-option"]');
+        options.forEach((opt) => {
+          // 키보드 이동으로 포커스된 항목인지 판단 (ID 일치 여부)
+          const isKeyboardFocused = activeId && opt.id === activeId;
+
+          // 마우스 호버 및 기타 포커스 조건
+          const isHovered = opt.matches(":hover");
+          const isSelected =
+            opt.classList.contains("css-option-is-selected") ||
+            opt.className.includes("--is-selected");
+
+          if (isKeyboardFocused || isHovered) {
+            // 방향키 이동 또는 마우스 호버 시 강조 배경색 적용
+            opt.style.setProperty("background-color", "#f3f4f6", "important");
+            opt.style.setProperty("color", "#111827", "important");
+          } else if (isSelected) {
+            opt.style.setProperty("background-color", "#e5e7eb", "important");
+            opt.style.setProperty("color", "#111827", "important");
+          } else {
+            opt.style.removeProperty("background-color");
+            opt.style.removeProperty("color");
+          }
+        });
+      }
+
+      // 키보드 입력(방향키 등) 시 즉시 반영
+      window.addEventListener(
+        "keydown",
+        (e) => {
+          if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
+            requestAnimationFrame(() => {
+              applyHighlight();
+              setTimeout(applyHighlight, 5);
+            });
+          }
+        },
+        true
+      );
+
+      // DOM 변화 감지 (마우스 호버 및 동적 검색 목록 렌더링 대응)
+      const observer = new MutationObserver(() => {
+        applyHighlight();
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class", "style", "aria-activedescendant", "id"],
+      });
+    </script>
+    <div id="root"></div>
+  </body>
+</html>

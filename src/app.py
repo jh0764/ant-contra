@@ -402,7 +402,7 @@ try:
     if "error" in foreign_data or "error" in news_data:
         st.caption("⚠️ 일부 수급/뉴스 데이터를 실시간으로 가져오지 못해 해당 지표의 신뢰도가 낮을 수 있습니다.")
 
-    index_series = get_market_index_series(is_kosdaq)
+    index_series, index_err = get_market_index_series(is_kosdaq)
     rs_data = calculate_rs_indicator(close_cleaned, index_series)
     obj_indicators, objective_score = calculate_objective_indicators(
         close_cleaned,

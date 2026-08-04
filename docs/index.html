@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개미반대로 — 시스템 기술 명세 및 품질 검증 포털</title>
+    <!-- FontAwesome 아이콘 -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <!-- 공통 디자인 스타일시트 -->
+    <link rel="stylesheet" href="style.css" />
+    <!-- Mermaid 다이어그램 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.min.js"></script>
+  </head>
+  <body>
+    <style>
+      /* 유스케이스 다이어그램 용기 및 SVG 강제 확대 */
+      .mermaid {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        background: transparent !important;
+      }
+      .mermaid svg {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 400px; /* 세로 최소 높이 확보 */
+      }
+    </style>
+    <!-- 왼쪽 사이드바 -->
+    <nav id="sidebar">
+      <div class="brand">
+        <i class="fa-solid fa-chart-line" style="color: var(--accent)"></i>
+        ANT-CONTRA <span>DOCS</span>
+      </div>
+
+      <div class="nav-group-label">Overview</div>
+      <button
+        class="nav-btn active"
+        data-tab="home"
+        onclick="switchTab('home')"
+      >
+        <i class="fa-solid fa-house"></i> 메인 대시보드
+      </button>
+      <button class="nav-btn" data-tab="usecase" onclick="switchTab('usecase')">
+        <i class="fa-solid fa-diagram-project"></i> 유즈케이스 명세
+      </button>
+      <button
+        class="nav-btn"
+        data-tab="testplan"
+        onclick="switchTab('testplan')"
+      >
+        <i class="fa-solid fa-vial-circle-check"></i> 단위테스트 검증
+      </button>
+
+      <div class="nav-group-label">Document Files</div>
+      <a href="requirements_spec.html" class="nav-btn" target="_blank">
+        <i class="fa-solid fa-file-contract"></i> 요구사항 정의서
+      </a>
+      <a href="architecture.html" class="nav-btn" target="_blank">
+        <i class="fa-solid fa-sitemap"></i> 아키텍처 정의서
+      </a>
+      <a href="strategy_troubleshooting.html" class="nav-btn" target="_blank">
+        <i class="fa-solid fa-sliders"></i> 전략 & 트러블슈팅
+      </a>
+      <a
+        href="data_pipeline_specification.html"
+        class="nav-btn"
+        target="_blank"
+      >
+        <i class="fa-solid fa-database"></i> 파이프라인 명세서
+      </a>
+      <a href="backtest_verification_spec.html" class="nav-btn" target="_blank">
+        <i class="fa-solid fa-chart-pie"></i> 백테스트 검증 보고서
+      </a>
+      <a href="test_plan_report.html" class="nav-btn" target="_blank">
+        <i class="fa-solid fa-list-check"></i> 단위테스트 계획서
+      </a>
+    </nav>
+
+    <!-- 오른쪽 메인 콘텐츠 영역 -->
+    <main id="content">
+      <!-- 1. 메인 대시보드 화면 -->
+      <section id="home" class="page-section active">
+        <div class="doc-header">
+          <div class="eyebrow-row">
+            <span class="eyebrow-pill">SYSTEM DOCUMENTATION</span>
+            <span class="eyebrow-meta">개미반대로 · Ant-Contra</span>
+          </div>
+          <h1 class="doc-title">
+            시스템 기술 명세 및 품질 검증 포털<span>.</span>
+          </h1>
+          <p class="doc-sub">
+            주식 데이터 수집, 감성 분석, 스코어링 엔진 및 단위테스트 검증 문서
+            종합 가이드입니다.
+          </p>
+        </div>
+
+        <div class="grid-2">
+          <a href="requirements_spec.html" class="link-card" target="_blank">
+            <div>
+              <div class="link-card-head">
+                <span class="link-card-title"
+                  ><i
+                    class="fa-solid fa-file-contract"
+                    style="color: var(--accent)"
+                  ></i>
+                  요구사항 정의서</span
+                >
+                <i class="fa-solid fa-chevron-right"></i>
+              </div>
+              <p class="link-card-desc">
+                사용자 요구사항 및 시스템 기능/비기능 요구 조건 명세
+              </p>
+            </div>
+            <span class="link-card-file" style="margin-top: 12px"
+              >requirements_spec.html</span
+            >
+          </a>
+
+          <a href="architecture.html" class="link-card" target="_blank">
+            <div>
+              <div class="link-card-head">
+                <span class="link-card-title"
+                  ><i
+                    class="fa-solid fa-sitemap"
+                    style="color: var(--blue)"
+                  ></i>
+                  아키텍처 정의서</span
+                >
+                <i class="fa-solid fa-chevron-right"></i>
+              </div>
+              <p class="link-card-desc">
+                Streamlit 기반 UI 및 core/ 분석 엔진 구조 모듈 설계
+              </p>
+            </div>
+            <span class="link-card-file" style="margin-top: 12px"
+              >architecture.html</span
+            >
+          </a>
+
+          <a
+            href="strategy_troubleshooting.html"
+            class="link-card"
+            target="_blank"
+          >
+            <div>
+              <div class="link-card-head">
+                <span class="link-card-title"
+                  ><i
+                    class="fa-solid fa-sliders"
+                    style="color: var(--purple)"
+                  ></i>
+                  전략 및 트러블슈팅</span
+                >
+                <i class="fa-solid fa-chevron-right"></i>
+              </div>
+              <p class="link-card-desc">
+                기술적 지표 전략, 공포 지수 산출 및 예외 처리 가이드
+              </p>
+            </div>
+            <span class="link-card-file" style="margin-top: 12px"
+              >strategy_troubleshooting.html</span
+            >
+          </a>
+
+          <a
+            href="data_pipeline_specification.html"
+            class="link-card"
+            target="_blank"
+          >
+            <div>
+              <div class="link-card-head">
+                <span class="link-card-title"
+                  ><i
+                    class="fa-solid fa-database"
+                    style="color: var(--green)"
+                  ></i>
+                  파이프라인 명세서</span
+                >
+                <i class="fa-solid fa-chevron-right"></i>
+              </div>
+              <p class="link-card-desc">
+                외부 데이터 수집, 크롤링 및 장애 대응(Fail-safe) 정책
+              </p>
+            </div>
+            <span class="link-card-file" style="margin-top: 12px"
+              >data_pipeline_specification.html</span
+            >
+          </a>
+
+          <a
+            href="backtest_verification_spec.html"
+            class="link-card"
+            target="_blank"
+          >
+            <div>
+              <div class="link-card-head">
+                <span class="link-card-title"
+                  ><i
+                    class="fa-solid fa-chart-pie"
+                    style="color: var(--accent)"
+                  ></i>
+                  백테스트 검증 보고서</span
+                >
+                <i class="fa-solid fa-chevron-right"></i>
+              </div>
+              <p class="link-card-desc">
+                역발상 시그널 알고리즘의 과거 수익률 및 승률 검증 결과
+              </p>
+            </div>
+            <span class="link-card-file" style="margin-top: 12px"
+              >backtest_verification_spec.html</span
+            >
+          </a>
+
+          <a href="test_plan_report.html" class="link-card" target="_blank">
+            <div>
+              <div class="link-card-head">
+                <span class="link-card-title"
+                  ><i
+                    class="fa-solid fa-list-check"
+                    style="color: var(--blue)"
+                  ></i>
+                  단위테스트 계획서</span
+                >
+                <i class="fa-solid fa-chevron-right"></i>
+              </div>
+              <p class="link-card-desc">
+                core/ 도메인 순수 계산 함수 pytest 케이스 및 시나리오
+              </p>
+            </div>
+            <span class="link-card-file" style="margin-top: 12px"
+              >test_plan_report.html</span
+            >
+          </a>
+        </div>
+      </section>
+
+      <!-- 2. 유즈케이스 명세 화면 -->
+      <section id="usecase" class="page-section">
+        <div class="doc-header">
+          <div class="eyebrow-row">
+            <span class="eyebrow-pill">USE CASE SPECIFICATION</span>
+          </div>
+          <h1 class="doc-title">
+            사용자 흐름 및 유즈케이스 명세<span>.</span>
+          </h1>
+          <p class="doc-sub">
+            투자자 관점에서의 시스템 기능 상호작용 명세입니다.
+          </p>
+        </div>
+
+        <div class="section-card">
+          <h3 style="margin-bottom: 12px">유즈케이스 다이어그램</h3>
+          <div class="diagram-box">
+            <pre class="mermaid">
+graph LR
+    Actor[개미 투자자]
+    subgraph System ["주식 분석 및 스크리닝 시스템"]
+        UC1[UC-01: 종목 검색]
+        UC2[UC-02: 스캐너 목록 열람]
+        UC3[UC-03: 종목 상세 진입]
+        UC4[UC-04: 백테스트 확인]
+    end
+
+    Actor --> UC1
+    Actor --> UC2
+    UC1 -.->|include| UC3
+    UC2 -.->|include| UC3
+    UC3 -.->|include| UC4
+                    </pre
+            >
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3 style="margin-bottom: 12px">시나리오 처리 순서</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>단계</th>
+                  <th>주체</th>
+                  <th>행동 및 시스템 반응</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>01</b></td>
+                  <td>개미 투자자</td>
+                  <td>
+                    시스템에 접속하여 특정 종목을 검색하거나 조건별 스캐너
+                    목록을 열람합니다.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>02</b></td>
+                  <td>시스템</td>
+                  <td>
+                    수집된 수급 및 차트 지표를 기반으로 해당 조건 종목 리스트를
+                    반환합니다.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>03</b></td>
+                  <td>개미 투자자</td>
+                  <td>
+                    목록에서 상세 종목을 선택하여 분석 페이지로 이동합니다.
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>04</b></td>
+                  <td>시스템</td>
+                  <td>
+                    종합 득점, 손절/목표가(Risk Level) 및 매수 진입 시그널을
+                    출력합니다.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 단위테스트 검증 화면 -->
+      <section id="testplan" class="page-section">
+        <div class="doc-header">
+          <div class="eyebrow-row">
+            <span class="eyebrow-pill">TEST AUTOMATION</span>
+          </div>
+          <h1 class="doc-title">
+            단위테스트 계획 및 pytest 명세<span>.</span>
+          </h1>
+          <p class="doc-sub">
+            핵심 분석 모듈(core/)의 안정성을 검증하는 테스트 코드입니다.
+          </p>
+        </div>
+
+        <div class="section-card">
+          <h3 style="margin-bottom: 12px">테스트 대상 모듈</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>모듈 경로</th>
+                  <th>핵심 검증 기능</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>core/risk_levels.py</code></td>
+                  <td>
+                    볼린저밴드 및 ATR 기반 손절가/목표가 계산, 손익비 검증
+                  </td>
+                  <td><b style="color: var(--green)">검증 완료</b></td>
+                </tr>
+                <tr>
+                  <td><code>core/indicators.py</code></td>
+                  <td>
+                    RSI, 200일선 추세 점수화 및 데이터 결손 시 기본값 방어
+                  </td>
+                  <td><b style="color: var(--green)">검증 완료</b></td>
+                </tr>
+                <tr>
+                  <td><code>core/scoring.py</code></td>
+                  <td>구조적 하락추세 시 점수 상한 제한(55점 Cap) 적용 검증</td>
+                  <td><b style="color: var(--green)">검증 완료</b></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- JS 스크립트: Mermaid 자동 초기화 및 탭 전환 -->
+    <script>
+      mermaid.initialize({ startOnLoad: false, theme: "neutral" });
+
+      let mermaidRendered = false;
+
+      function switchTab(tabId) {
+        document
+          .querySelectorAll(".page-section")
+          .forEach((el) => el.classList.remove("active"));
+        document
+          .querySelectorAll(".nav-btn")
+          .forEach((el) => el.classList.remove("active"));
+
+        const targetSection = document.getElementById(tabId);
+        if (targetSection) targetSection.classList.add("active");
+
+        const activeBtn = document.querySelector(
+          `.nav-btn[data-tab="${tabId}"]`
+        );
+        if (activeBtn) activeBtn.classList.add("active");
+
+        // 탭 활성화 후 Mermaid 다이어그램 동적 랜더링
+        if (tabId === "usecase" && !mermaidRendered) {
+          mermaid.run({ querySelector: ".mermaid" });
+          mermaidRendered = true;
+        }
+      }
+    </script>
+  </body>
+</html>

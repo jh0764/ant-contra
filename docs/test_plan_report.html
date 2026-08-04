@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개미반대로 — 단위테스트 계획서 및 테스트 케이스 명세</title>
+    <!-- FontAwesome 아이콘 CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <!-- 공통 디자인 스타일시트 연결 -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <style>
+    html,
+    body {
+      height: 100%;
+      overflow-y: auto !important; /* 세로 스크롤 강제 허용 */
+    }
+  </style>
+  <body>
+    <div class="doc" style="max-width: 1080px; margin: 0 auto; padding: 20px">
+      <!-- 상단 문서 헤더 -->
+      <div class="doc-header">
+        <div class="eyebrow-row">
+          <span class="eyebrow-pill">Test Specification</span>
+          <span class="eyebrow-meta">개미반대로 · Ant-Contra</span>
+        </div>
+        <h1 class="doc-title">
+          단위테스트 계획서 및 테스트 케이스 명세<span>.</span>
+        </h1>
+        <p class="doc-sub">
+          core/ 내 순수 계산 및 검증 함수의 신뢰성을 확보하고, 누락된 데이터나
+          예외 상황에서도 모듈이 정상 동작(Graceful Degradation)하는지 검증하기
+          위한 pytest 명세입니다.
+        </p>
+      </div>
+
+      <!-- 1. 테스트 계획서 영역 -->
+      <div class="section-card">
+        <div class="section-head" style="margin-bottom: 16px">
+          <h2 class="doc-title" style="font-size: 20px; margin: 0">
+            <i
+              class="fa-solid fa-vial-circle-check"
+              style="color: var(--accent)"
+            ></i>
+            테스트 계획서 (Test Plan)
+          </h2>
+        </div>
+
+        <h3
+          style="
+            font-size: 14px;
+            font-weight: 700;
+            margin: 16px 0 8px;
+            color: var(--text-main);
+          "
+        >
+          개요 및 목적
+        </h3>
+        <p class="doc-sub" style="margin-bottom: 16px">
+          본 문서는 <code>core/</code> 내 순수 계산 및 검증 함수(risk_levels,
+          indicators, scoring)의 신뢰성을 확보하고, 누락된 데이터나 예외
+          상황에서도 모듈이 정상 동작(Graceful Degradation)하는지 검증하기 위해
+          작성되었습니다.
+        </p>
+
+        <h3
+          style="
+            font-size: 14px;
+            font-weight: 700;
+            margin: 20px 0 8px;
+            color: var(--text-main);
+          "
+        >
+          테스트 대상 모듈 및 함수
+        </h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>모듈명</th>
+                <th>대상 함수</th>
+                <th>검증 내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>core/risk_levels.py</code></td>
+                <td><code>calculate_risk_levels</code></td>
+                <td>
+                  볼린저밴드, 피보나치, ATR 기반 손절/목표가 계산 및 손익비(R:R)
+                  등급 산출 및 예외 처리 검증
+                </td>
+              </tr>
+              <tr>
+                <td><code>core/indicators.py</code></td>
+                <td><code>calculate_objective_indicators</code></td>
+                <td>
+                  RSI, 볼린저밴드, 52주 고저가, 200일선 추세 등 객관적 지표
+                  점수화 및 가중치 합산 정규화 검증
+                </td>
+              </tr>
+              <tr>
+                <td><code>core/scoring.py</code></td>
+                <td>
+                  <code>calculate_final_score</code><br />
+                  <code>get_entry_signal</code>
+                </td>
+                <td>
+                  최종 스크림 점수 보정, 200일선 구조적 하락 시 점수 캡(Cap)
+                  제어, 매수 진입 신호 조건 분류 검증
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. pytest 코드 영역 -->
+      <div class="section-card">
+        <div
+          class="section-head"
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+          "
+        >
+          <h2 class="doc-title" style="font-size: 20px; margin: 0">
+            <i class="fa-solid fa-code" style="color: var(--blue)"></i> pytest
+            기반 단위테스트 코드
+          </h2>
+          <span class="link-card-file">tests/test_core.py</span>
+        </div>
+
+        <pre><code>import pytest
+import pandas as pd
+import numpy as np
+
+from core.risk_levels import calculate_risk_levels
+from core.indicators import calculate_objective_indicators
+from core.scoring import calculate_final_score, get_entry_signal
+
+
+# ------------------------------------------------------------------
+# Fixtures
+# ------------------------------------------------------------------
+@pytest.fixture
+def mock_stock_data():
+    """300일 치의 주가 및 거래량 샘플 데이터 생성"""
+    np.random.seed(42)
+    dates = pd.date_range(start="2025-01-01", periods=300, freq="D")
+    
+    close = pd.Series(np.linspace(10000, 15000, 300) + np.random.normal(0, 100, 300), index=dates)
+    high = close + np.random.uniform(50, 200, 300)
+    low = close - np.random.uniform(50, 200, 300)
+    open_p = close + np.random.uniform(-50, 50, 300)
+    volume = pd.Series(np.random.randint(100000, 1000000, 300), index=dates)
+
+    foreign_data = {
+        "net_values": [1000, -500, -2000],
+        "consec_sell": 0,
+        "consec_buy": 1,
+        "recent_sum": -1500,
+        "is_turning": True,
+        "is_still_selling": False
+    }
+
+    news_data = {
+        "today_count": 0,
+        "today_ratio": 0.0
+    }
+
+    return {
+        "close": close, "high": high, "low": low, "open": open_p,
+        "volume": volume, "foreign": foreign_data, "news": news_data
+    }
+
+
+# ------------------------------------------------------------------
+# core/risk_levels.py 테스트
+# ------------------------------------------------------------------
+class TestRiskLevels:
+    def test_calculate_risk_levels_success(self, mock_stock_data):
+        d = mock_stock_data
+        curr_price = float(d["close"].iloc[-1])
+        
+        result = calculate_risk_levels(d["close"], d["high"], d["low"], curr_price)
+        
+        assert result is not None
+        assert "stop_loss" in result
+        assert "rr_ratio" in result
+        assert result["stop_loss"] < curr_price
+        assert result["target1"] > curr_price
+        assert result["rr_verdict"] in ["우수", "양호", "미흡", "산출불가"]
+
+    def test_calculate_risk_levels_exception_handling(self):
+        # 데이터 부적합 시 None 리턴 검증
+        empty_series = pd.Series([], dtype=float)
+        result = calculate_risk_levels(empty_series, empty_series, empty_series, 10000)
+        assert result is None
+
+
+# ------------------------------------------------------------------
+# core/indicators.py 테스트
+# ------------------------------------------------------------------
+class TestIndicators:
+    def test_calculate_objective_indicators_structure(self, mock_stock_data):
+        d = mock_stock_data
+        results, score = calculate_objective_indicators(
+            close_series=d["close"],
+            volume_series=d["volume"],
+            foreign_data=d["foreign"],
+            news_data=d["news"],
+            is_kosdaq=False,
+            high_series=d["high"],
+            low_series=d["low"],
+            open_series=d["open"]
+        )
+        
+        # 기본 반환 구조 및 0~80점 사이 오차범위 검증
+        assert isinstance(results, dict)
+        assert 0 <= score <= 80
+        assert "rsi" in results
+        assert "trend" in results
+        assert "volume" in results
+
+    def test_indicators_data_insufficient_fallback(self):
+        # 부족한 스칼라/시리즈 전달 시 에러 방지 처리 검증
+        short_series = pd.Series([100, 105, 102])
+        results, score = calculate_objective_indicators(
+            close_series=short_series,
+            volume_series=short_series,
+            foreign_data={},
+            news_data={},
+            is_kosdaq=True
+        )
+        assert results["rsi"]["status"] == "yellow"
+        assert results["trend"]["is_structural_downtrend"] is False
+
+
+# ------------------------------------------------------------------
+# core/scoring.py 테스트
+# ------------------------------------------------------------------
+class TestScoring:
+    def test_structural_downtrend_cap(self):
+        # 200일선 구조적 하락추세 시 점수 상한선(55점) 적용 검증
+        obj_indicators = {
+            "rsi": {"value": 20},
+            "w52": {"score": 15},
+            "volume": {"score": 10},
+            "pvd": {"score": 15},
+            "bb": {"score": 15},
+            "obv": {"score": 10},
+            "foreign": {"score": 15},
+            "drawdown": {"value": 35},
+            "trend": {"is_structural_downtrend": True}
+        }
+        
+        score, tier = calculate_final_score(obj_indicators, community_raw=50, is_kosdaq=False, fomo_score=15)
+        assert score <= 55
+
+    def test_get_entry_signal_falling_knife(self):
+        # 구조적 하락 추세 + 공포 구간 조건에서 '진입 보류' 신호 반환 검증
+        obj_indicators = {
+            "foreign": {"is_turning": True, "is_still_selling": False},
+            "obv": {"status": "green"},
+            "pvd": {"score": 15},
+            "rsi": {"value": 25},
+            "trend": {"is_structural_downtrend": True}
+        }
+        
+        signal = get_entry_signal(obj_indicators, final_scream_score=75, risk_levels=None)
+        assert "진입 보류" in signal["level"]
+        assert "구조적 하락추세" in signal["desc"]
+</code></pre>
+      </div>
+    </div>
+  </body>
+</html>

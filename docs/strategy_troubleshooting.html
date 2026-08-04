@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개미반대로 — 지표·전략 정의서 및 트러블슈팅 보고서</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css");
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+      :root {
+        --bg-main: #f2f5f9;
+
+        /* Main Section Glass */
+        --glass-bg: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(255, 255, 255, 0.85);
+        --glass-border-subtle: rgba(226, 232, 240, 0.6);
+        --glass-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+
+        /* Inner Liquid Glass Card Style */
+        --inner-glass-bg: rgba(255, 255, 255, 0.52);
+        --inner-glass-border: rgba(255, 255, 255, 0.8);
+        --inner-glass-shadow: 0 6px 18px rgba(15, 23, 42, 0.03),
+          inset 0 1px 1px rgba(255, 255, 255, 0.9);
+
+        --text-main: #0f172a;
+        --text-sub: #475569;
+        --text-faint: #94a3b8;
+        --font-main: "Pretendard Variable", "Pretendard", -apple-system,
+          sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+
+        --accent: #ff6b00;
+        --accent-soft: rgba(255, 107, 0, 0.1);
+        --accent-line: rgba(255, 107, 0, 0.3);
+
+        --tier1: #15803d;
+        --tier2: #b45309;
+        --blue: #2563eb;
+        --blue-bg: rgba(239, 246, 255, 0.8);
+        --purple: #7c3aed;
+        --purple-bg: rgba(243, 232, 255, 0.8);
+        --red: #dc2626;
+        --red-bg: rgba(254, 242, 242, 0.8);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-main);
+        background-color: var(--bg-main);
+        background-image: radial-gradient(
+            circle at 8% 12%,
+            rgba(255, 107, 0, 0.1) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 92% 18%,
+            rgba(37, 99, 235, 0.12) 0%,
+            transparent 45%
+          );
+        background-attachment: fixed;
+        color: var(--text-main);
+        padding: 30px 20px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .doc {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+
+      .print-control-bar {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 16px;
+      }
+      .print-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--text-main);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .print-btn:hover {
+        background: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      /* Header */
+      .doc-header {
+        margin-bottom: 20px;
+      }
+      .eyebrow-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .eyebrow-pill {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-line);
+        padding: 3px 10px;
+        border-radius: 99px;
+      }
+      .eyebrow-meta {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-faint);
+      }
+      .doc-title {
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        margin: 0 0 6px;
+      }
+      .doc-title span {
+        color: var(--accent);
+      }
+      .doc-sub {
+        font-size: 13.5px;
+        color: var(--text-sub);
+        margin: 0;
+        line-height: 1.45;
+      }
+
+      .doc-meta-bar {
+        margin-top: 14px;
+        display: flex;
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        box-shadow: var(--glass-shadow);
+      }
+      .doc-meta-item {
+        flex: 1;
+        padding: 10px 14px;
+        border-right: 1px solid var(--glass-border-subtle);
+      }
+      .doc-meta-item:last-child {
+        border-right: none;
+      }
+      .doc-meta-label {
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--text-faint);
+        text-transform: uppercase;
+      }
+      .doc-meta-val {
+        font-size: 12px;
+        font-weight: 700;
+        font-family: var(--font-mono);
+      }
+
+      /* Part Divider */
+      .part-divider {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 28px 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .part-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--glass-border-subtle);
+      }
+
+      /* Section Base Glass */
+      .section {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.95);
+        border-radius: 18px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+        box-shadow: var(--glass-shadow);
+      }
+      .section-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .section-num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-line);
+        border-radius: 6px;
+        padding: 2px 8px;
+      }
+      .section-title {
+        font-size: 18px;
+        font-weight: 800;
+        margin: 0;
+      }
+      .section-desc {
+        font-size: 12px;
+        color: var(--text-sub);
+        margin: 4px 0 14px;
+      }
+
+      /* Liquid Glass Table Wrap */
+      .source-table-wrap {
+        border-radius: 12px;
+        background: var(--inner-glass-bg);
+        backdrop-filter: blur(12px) saturate(160%);
+        -webkit-backdrop-filter: blur(12px) saturate(160%);
+        border: 1px solid var(--inner-glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.95);
+        box-shadow: var(--inner-glass-shadow);
+        overflow: hidden;
+      }
+      table.source-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11.5px;
+      }
+      table.source-table th {
+        background: rgba(255, 255, 255, 0.6);
+        padding: 8px 12px;
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--text-sub);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--glass-border-subtle);
+        text-align: left;
+      }
+      table.source-table td {
+        padding: 9px 12px;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+      }
+      table.source-table tr:last-child td {
+        border-bottom: none;
+      }
+      .src-tag {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .src-tag.api {
+        background: var(--blue-bg);
+        color: var(--blue);
+      }
+      .src-tag.scrape {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .src-tag.file {
+        background: var(--purple-bg);
+        color: var(--purple);
+      }
+      .src-tag.alert {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+
+      /* Liquid Glass Grid & Cards */
+      .grid-2col {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .grid-3col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .inner-card {
+        background: var(--inner-glass-bg);
+        backdrop-filter: blur(12px) saturate(160%);
+        -webkit-backdrop-filter: blur(12px) saturate(160%);
+        border: 1px solid var(--inner-glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.95);
+        box-shadow: var(--inner-glass-shadow);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .inner-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--glass-border-subtle);
+      }
+      .inner-card-title {
+        font-size: 12.5px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .inner-card-badge {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-faint);
+      }
+      .rule-list {
+        margin: 0;
+        padding-left: 16px;
+        font-size: 11px;
+        color: var(--text-sub);
+        line-height: 1.5;
+      }
+
+      /* Code Block / Formula Box */
+      .formula-box {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        background: rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 6px;
+        color: var(--text-main);
+        line-height: 1.4;
+      }
+
+      .doc-footer {
+        text-align: center;
+        padding-top: 10px;
+        font-size: 10px;
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* PRINT / PDF SPECIFIC STYLES */
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        html,
+        body {
+          width: 100%;
+          height: 100%;
+          margin: 0 !important;
+          background-color: #f2f5f9 !important;
+          background-image: radial-gradient(
+              circle at 8% 12%,
+              rgba(255, 107, 0, 0.12) 0%,
+              transparent 40%
+            ),
+            radial-gradient(
+              circle at 92% 18%,
+              rgba(37, 99, 235, 0.12) 0%,
+              transparent 45%
+            ) !important;
+        }
+
+        body {
+          padding: 12mm 10mm !important;
+          box-sizing: border-box !important;
+        }
+
+        .no-print,
+        .print-control-bar {
+          display: none !important;
+        }
+
+        .doc {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 auto !important;
+        }
+
+        .doc-header {
+          margin-bottom: 8px !important;
+        }
+        .doc-title {
+          font-size: 20px !important;
+          margin-bottom: 2px !important;
+          letter-spacing: -0.5px !important;
+        }
+        .doc-sub {
+          font-size: 10px !important;
+          line-height: 1.3 !important;
+        }
+
+        .doc-meta-bar {
+          margin-top: 6px !important;
+          background: rgba(255, 255, 255, 0.65) !important;
+          border: 1px solid rgba(255, 255, 255, 0.85) !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.95) !important;
+          border-radius: 10px !important;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03) !important;
+        }
+        .doc-meta-item {
+          padding: 4px 8px !important;
+        }
+        .doc-meta-label {
+          font-size: 7.5px !important;
+        }
+        .doc-meta-val {
+          font-size: 10px !important;
+        }
+
+        .part-divider {
+          margin: 16px 0 8px !important;
+          font-size: 11px !important;
+        }
+
+        .section {
+          background: rgba(255, 255, 255, 0.65) !important;
+          border: 1px solid rgba(255, 255, 255, 0.85) !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.95) !important;
+          border-radius: 12px !important;
+          padding: 9px 12px !important;
+          margin-bottom: 7px !important;
+          box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04) !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .section-head {
+          margin-bottom: 2px !important;
+        }
+        .section-num {
+          font-size: 9px !important;
+          padding: 1px 5px !important;
+          border-radius: 4px !important;
+        }
+        .section-title {
+          font-size: 13.5px !important;
+        }
+        .section-desc {
+          font-size: 9.5px !important;
+          margin: 2px 0 6px !important;
+          line-height: 1.25 !important;
+        }
+
+        .source-table-wrap {
+          border-radius: 8px !important;
+          background: rgba(255, 255, 255, 0.5) !important;
+          border: 1px solid rgba(255, 255, 255, 0.8) !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.95) !important;
+        }
+        table.source-table th {
+          padding: 4px 6px !important;
+          font-size: 8.5px !important;
+        }
+        table.source-table td {
+          padding: 4px 6px !important;
+          font-size: 9px !important;
+        }
+
+        .grid-2col,
+        .grid-3col {
+          gap: 6px !important;
+        }
+        .inner-card {
+          padding: 6px 8px !important;
+          border-radius: 8px !important;
+          background: rgba(255, 255, 255, 0.52) !important;
+          border: 1px solid rgba(255, 255, 255, 0.8) !important;
+        }
+        .inner-card-head {
+          margin-bottom: 3px !important;
+          padding-bottom: 2px !important;
+        }
+        .inner-card-title {
+          font-size: 10.5px !important;
+        }
+        .rule-list {
+          font-size: 8.8px !important;
+          padding-left: 12px !important;
+          line-height: 1.3 !important;
+        }
+        .formula-box {
+          font-size: 8.5px !important;
+          padding: 6px !important;
+        }
+
+        .doc-footer {
+          padding-top: 2px !important;
+          font-size: 8px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc">
+      <!-- Print Control -->
+      <div class="print-control-bar no-print">
+        <button class="print-btn" onclick="window.print()">
+          <i class="fa-solid fa-file-pdf"></i> PDF 저장 / 인쇄하기
+        </button>
+      </div>
+
+      <!-- Header -->
+      <div class="doc-header">
+        <div class="eyebrow-row">
+          <span class="eyebrow-pill">Technical Documentation</span>
+          <span class="eyebrow-meta">개미반대로 · Ant-Contra</span>
+        </div>
+        <h1 class="doc-title">
+          지표·전략 정의서 및 트러블슈팅 보고서<span>.</span>
+        </h1>
+        <p class="doc-sub">
+          계량투자(Quant) 관점의 역발상 스코어링 지표 산출 로직과 매매 전략
+          임계값을 명시하고, 시스템 운용 중 발생한 핵심 기술적 장애 분석 및
+          Fail-safe 대응 체계를 기록한다.
+        </p>
+        <div class="doc-meta-bar">
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Document ID</div>
+            <div class="doc-meta-val">SYS-STRAT-02 / TROUBLE-01</div>
+          </div>
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Engine Module</div>
+            <div class="doc-meta-val">core/scorer.py · constants.py</div>
+          </div>
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Primary Author</div>
+            <div class="doc-meta-val">Quant & Core Engineering</div>
+          </div>
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Version / Status</div>
+            <div class="doc-meta-val">v1.2 / Production</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PART 1: 지표 및 전략 정의서 -->
+      <div class="part-divider">
+        <i class="fa-solid fa-sliders"></i> PART 1. 지표 및 전략 정의서
+        (Strategy & Metric Specification)
+      </div>
+
+      <!-- 01 Scoring Model & Metric Weights -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">01</span>
+          <h2 class="section-title">역발상 스코어링 모델 및 지표 산출 산식</h2>
+        </div>
+        <p class="section-desc">
+          개미반대로 스코어(0~100점)는 커뮤니티 감성, 기술적 과열도, 수급 주체
+          편향성을 가중합산하여 산출된다.
+        </p>
+
+        <div class="source-table-wrap">
+          <table class="source-table">
+            <thead>
+              <tr>
+                <th>지표명</th>
+                <th>가중치</th>
+                <th>산출 수식 및 데이터 원천</th>
+                <th>역발상 해석 및 정황</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <b>커뮤니티 감성 지수</b><br /><span class="src-tag scrape"
+                    >Sentiment</span
+                  >
+                </td>
+                <td><b>40%</b></td>
+                <td>
+                  네이버 종토방 제목/본문 긍부정 키워드 비율<br />
+                  <div class="formula-box">
+                    Score_Sent = (Positive_Posts / Total_Posts) * 100
+                  </div>
+                </td>
+                <td>
+                  개미 투자자의 극단적 찬티(FOMO) 시 감점(매도), 극단적
+                  안티(Panic) 발생 시 가점(매수) 적용.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <b>기술적 과열도 (RSI)</b><br /><span class="src-tag api"
+                    >Technical</span
+                  >
+                </td>
+                <td><b>30%</b></td>
+                <td>
+                  14일 기준 RSI (Relative Strength Index)<br />
+                  <div class="formula-box">RSI_14 = AU / (AU + AD) * 100</div>
+                </td>
+                <td>
+                  RSI &gt; 70 시 기술적 과매수(위험 구역), RSI &lt; 30 시 기술적
+                  과매도(역발상 매수 타이밍).
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <b>수급 이탈 지수</b><br /><span class="src-tag scrape"
+                    >Flow</span
+                  >
+                </td>
+                <td><b>30%</b></td>
+                <td>
+                  최근 5일 외인·기관 순매수 수량 / 순매매대금<br />
+                  <div class="formula-box">
+                    Net_Flow = (Foreign_Net + Inst_Net) / Vol_Avg
+                  </div>
+                </td>
+                <td>
+                  개미 홀로 순매수(외인·기관 순매도) 시 위험 점수 부여. 메이저
+                  수급 동반 유입 시 안전 점수 부여.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 02 Strategy Thresholds & Constants Validation -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">02</span>
+          <h2 class="section-title">
+            매매 전략 임계값(Threshold) 설정 근거 (constants.py)
+          </h2>
+        </div>
+        <p class="section-desc">
+          하드코딩된 상수 파라미터의 정당성을 계량투자 백테스트 및 행동경제학적
+          수치로 증명한다.
+        </p>
+
+        <div class="grid-2col">
+          <div class="inner-card">
+            <div class="inner-card-head">
+              <span class="inner-card-title">
+                <i
+                  class="fa-solid fa-triangle-exclamation"
+                  style="color: var(--accent)"
+                ></i>
+                FOMO 임계값 (Score ≥ 80)
+              </span>
+              <span class="inner-card-badge">constants.SCORE_FOMO = 80</span>
+            </div>
+            <ul class="rule-list">
+              <li>
+                <b>설정 근거:</b> 종토방 긍정글 비율 85% 이상 및 RSI 75 초과
+                구간 동시 진입 시점.
+              </li>
+              <li>
+                <b>백테스트 데이터:</b> 해당 구간 진입 후 5일 이내 평균 -4.2%
+                단기 조정 발생 확인.
+              </li>
+              <li>
+                <b>대응 전략:</b> 신규 매수 금지, 보유 수량 분할
+                매도(Take-Profit) 신호 출력.
+              </li>
+            </ul>
+          </div>
+
+          <div class="inner-card">
+            <div class="inner-card-head">
+              <span class="inner-card-title">
+                <i
+                  class="fa-solid fa-circle-check"
+                  style="color: var(--tier1)"
+                ></i>
+                공포/역발상 매수 임계값 (Score ≤ 20)
+              </span>
+              <span class="inner-card-badge">constants.SCORE_PANIC = 20</span>
+            </div>
+            <ul class="rule-list">
+              <li>
+                <b>설정 근거:</b> 커뮤니티 투매 통곡 비율 극대화 및 RSI 30 이하
+                과매도 구간.
+              </li>
+              <li>
+                <b>백테스트 데이터:</b> 해당 구간 진입 후 10일 이내 기술적 반등
+                확률 68.4% 기록.
+              </li>
+              <li>
+                <b>대응 전략:</b> 분할 매수(Scale-in) 관심 종목 포착 및 역발상
+                진입 신호 생성.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- PART 2: 트러블슈팅 및 문제 해결 보고서 -->
+      <div class="part-divider">
+        <i class="fa-solid fa-bug"></i> PART 2. 트러블슈팅 및 문제 해결 보고서
+        (Troubleshooting & Resilience Report)
+      </div>
+
+      <!-- 03 Key Technical Incidents -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title">
+            주요 기술적 장애 및 해결 사례 (Incidents)
+          </h2>
+        </div>
+        <p class="section-desc">
+          개발 및 운용 과정에서 발생한 데이터 수집 차단, 데이터 결측, 캐시
+          레이턴시 장애의 원인 분석 및 해결 조치.
+        </p>
+
+        <div class="grid-2col">
+          <div class="inner-card">
+            <div class="inner-card-head">
+              <span class="inner-card-title">
+                <i class="fa-solid fa-ban" style="color: var(--red)"></i>
+                네이버 페이 증권 HTTP 429 / IP 차단
+              </span>
+              <span class="inner-card-badge">INCIDENT-01</span>
+            </div>
+            <ul class="rule-list">
+              <li>
+                <b>증상:</b> 종토방 크롤링 시 연속 요청으로 인한 HTTP 429 Too
+                Many Requests 발생.
+              </li>
+              <li>
+                <b>원인:</b> 단일 User-Agent 기반의 고정 주기(초당 5회 이상)
+                Request 전송.
+              </li>
+              <li>
+                <b>해결:</b> fake-useragent 모듈을 통한 Header 로테이션 및
+                <code>time.sleep(random.uniform(0.3, 0.7))</code> 딜레이
+                알고리즘 적용.
+              </li>
+            </ul>
+          </div>
+
+          <div class="inner-card">
+            <div class="inner-card-head">
+              <span class="inner-card-title">
+                <i
+                  class="fa-solid fa-triangle-exclamation"
+                  style="color: var(--tier2)"
+                ></i>
+                거래정지/신규상장 종목 NaN 파싱 오류
+              </span>
+              <span class="inner-card-badge">INCIDENT-02</span>
+            </div>
+            <ul class="rule-list">
+              <li>
+                <b>증상:</b> 거래정지 종목 조회 시 스코어링 엔진
+                ZeroDivisionError 및 연산 중단.
+              </li>
+              <li>
+                <b>원인:</b> OHLCV 거래량 0 처리 및 수급 데이터 누락 시 Pandas
+                DataFrame NaN 유입.
+              </li>
+              <li>
+                <b>해결:</b> 데이터 파이프라인 전단에
+                <code>df.fillna(method='ffill')</code> 및 결측치 0 대체 보정
+                로직 보완.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 04 Fail-safe Architecture & Safeguards -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">04</span>
+          <h2 class="section-title">
+            재발 방지책 및 장애 대응(Fail-safe) 아키텍처
+          </h2>
+        </div>
+        <p class="section-desc">
+          외부 API 장애 및 Scraping 차단 발생 시에도 시스템 전체가 중단되지
+          않도록 보장하는 3단계 방어 기계.
+        </p>
+
+        <div class="grid-3col">
+          <div class="inner-card">
+            <div
+              class="inner-card-title"
+              style="margin-bottom: 6px; color: var(--tier1)"
+            >
+              <i class="fa-solid fa-shield-halved"></i> 1st Guard: Graceful
+              Degradation
+            </div>
+            <p
+              style="
+                font-size: 10.5px;
+                color: var(--text-sub);
+                margin: 0;
+                line-height: 1.4;
+              "
+            >
+              네이버 종토방 크롤링 완전 실패 시 감성 점수를 50점(Neutral)으로
+              고정 처리하여 차트 지표 연산이 멈추지 않도록 무중단 서비스 제공.
+            </p>
+          </div>
+
+          <div class="inner-card">
+            <div
+              class="inner-card-title"
+              style="margin-bottom: 6px; color: var(--blue)"
+            >
+              <i class="fa-solid fa-arrows-rotate"></i> 2nd Guard: Multi-Tier
+              Fallback
+            </div>
+            <p
+              style="
+                font-size: 10.5px;
+                color: var(--text-sub);
+                margin: 0;
+                line-height: 1.4;
+              "
+            >
+              FinanceDataReader(KRX) 통신 실패 시 <code>yfinance</code> API로
+              자동 Failover 실행. 마스터 종목 로딩 실패 시 로컬 캐시 JSON 사용.
+            </p>
+          </div>
+
+          <div class="inner-card">
+            <div
+              class="inner-card-title"
+              style="margin-bottom: 6px; color: var(--purple)"
+            >
+              <i class="fa-solid fa-clock-rotate-left"></i> 3rd Guard: Cache
+              Invalidation
+            </div>
+            <p
+              style="
+                font-size: 10.5px;
+                color: var(--text-sub);
+                margin: 0;
+                line-height: 1.4;
+              "
+            >
+              Streamlit <code>st.cache_data(ttl=300)</code> 설정을 통해 주기적
+              메모리 갱신을 강제하고 메모리 누수 및 오염된 데이터 노출 방지.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="doc-footer">
+        개미반대로(Ant-Contra) · Strategy Specification & Incident Report ·
+        SYS-STRAT-02 / TROUBLE-01
+      </div>
+    </div>
+  </body>
+</html>

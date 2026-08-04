@@ -2,6 +2,28 @@
 
 > 커뮤니티 여론의 공포/탐욕과 기술적 지표를 교차검증해 역발상 매수 타이밍을 찾는 실시간 주식 대시보드
 
+### 🌐 프로젝트 산출물 & 명세서 포털 (Live Web)
+
+> 채용 담당자 및 면접관을 위해 작성된 시스템 아키텍처 및 설계 명세서 웹사이트입니다.  
+> 🔗 **실시간 문서 포털 바로가기:** `https://<본인-깃허브-ID>.github.io/<저장소-이름>/`  
+> _(또는 GitHub 내 소스 문서 바로가기: [`docs/index.html`](./docs/index.html))_
+
+---
+
+## 📖 시스템 주요 명세서 (System Specifications)
+
+| 문서명                               | 설명                                                    |                                           웹 문서 링크                                           |                                   소스 파일                                   |
+| :----------------------------------- | :------------------------------------------------------ | :----------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
+| **문서 통합 포털**                   | 전체 명세서 및 아키텍처 대문 페이지                     |                 [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/)                 |                       [`index.html`](./docs/index.html)                       |
+| **시스템 아키텍처 정의서**           | 계층 구조, System Context, 데이터 소스 이중화(Fallback) |        [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/architecture.html)         |                [`architecture.html`](./docs/architecture.html)                |
+| **데이터 수집 및 파이프라인 명세서** | 외부 데이터 수집, 캐싱 정책(TTL), 장애 대응 전략        | [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/data_pipeline_specification.html) | [`data_pipeline_specification.html`](./docs/data_pipeline_specification.html) |
+| **요구사항 정의서**                  | 시스템 유즈케이스, 비명 지수 산출 로직 요구사항         |      [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/requirements_spec.html)      |           [`requirements_spec.html`](./docs/requirements_spec.html)           |
+| **백테스트 성과 검증 보고서**        | 과거 3년 데이터 기준 점수구간별 승률/수익률 검증        | [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/backtest_verification_spec.html)  |  [`backtest_verification_spec.html`](./docs/backtest_verification_spec.html)  |
+| **지표·전략 및 트러블슈팅**          | 13개 지표 가중치 설계 및 기술적 한계 극복 사례          |  [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/strategy_troubleshooting.html)   |    [`strategy_troubleshooting.html`](./docs/strategy_troubleshooting.html)    |
+| **테스트 계획 보고서**               | 단위 테스트, 통합 테스트 및 데이터 파이프라인 검증 계획 |      [웹에서 보기](https://<본인-깃허브-ID>.github.io/<저장소-이름>/test_plan_report.html)       |            [`test_plan_report.html`](./docs/test_plan_report.html)            |
+
+## 💡 프로젝트 개요
+
 국내 개인투자자(개미)는 감정적 매매(패닉셀·FOMO)에 취약하지만, 커뮤니티 여론과 실제 기술지표를 직접 교차검증할 시간과 툴이 없습니다. **개미반대로**는 네이버 종목토론방의 공포/탐욕 여론을 정량화하고, RSI·볼린저밴드·거래량·외국인수급 등 13개 객관 지표와 결합해 하나의 **"비명 지수(Scream Index)"**로 요약해 보여줍니다.
 
 ---

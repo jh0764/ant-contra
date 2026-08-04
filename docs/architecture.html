@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개미반대로 — 아키텍처 정의서</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css");
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+      :root {
+        /* Dynamic Glass Colors */
+        --bg-main: #f2f5f9;
+        --glass-bg: rgba(255, 255, 255, 0.65);
+        --glass-bg-hover: rgba(255, 255, 255, 0.82);
+        --glass-border: rgba(255, 255, 255, 0.7);
+        --glass-border-subtle: rgba(226, 232, 240, 0.6);
+        --glass-shadow: 0 16px 36px rgba(15, 23, 42, 0.05),
+          0 4px 12px rgba(0, 0, 0, 0.02);
+        --glass-shadow-hover: 0 20px 40px rgba(15, 23, 42, 0.09),
+          0 6px 16px rgba(0, 0, 0, 0.03);
+
+        /* Typography */
+        --text-main: #0f172a;
+        --text-sub: #475569;
+        --text-faint: #94a3b8;
+        --font-main: "Pretendard Variable", "Pretendard", -apple-system,
+          BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+        /* Accent & Tier Colors (Translucent adapted) */
+        --accent: #ff6b00;
+        --accent-soft: rgba(255, 107, 0, 0.1);
+        --accent-line: rgba(255, 107, 0, 0.3);
+
+        --tier1: #15803d;
+        --tier1-bg: rgba(220, 252, 231, 0.7);
+        --tier1-bd: rgba(187, 247, 208, 0.9);
+
+        --tier2: #b45309;
+        --tier2-bg: rgba(254, 243, 199, 0.7);
+        --tier2-bd: rgba(253, 230, 138, 0.9);
+
+        --tier3: #b91c1c;
+        --tier3-bg: rgba(254, 226, 226, 0.7);
+        --tier3-bd: rgba(254, 202, 202, 0.9);
+
+        --blue: #2563eb;
+        --blue-bg: rgba(239, 246, 255, 0.7);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-main);
+        background-color: var(--bg-main);
+        background-image: radial-gradient(
+            circle at 8% 12%,
+            rgba(255, 107, 0, 0.1) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 92% 18%,
+            rgba(37, 99, 235, 0.12) 0%,
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 50% 85%,
+            rgba(147, 51, 234, 0.06) 0%,
+            transparent 50%
+          );
+        background-attachment: fixed;
+        color: var(--text-main);
+        padding: 56px 24px 80px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .doc {
+        max-width: 1120px;
+        margin: 0 auto;
+      }
+
+      /* ===== Header ===== */
+      .doc-header {
+        margin-bottom: 40px;
+      }
+      .eyebrow-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .eyebrow-pill {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-line);
+        padding: 5px 12px;
+        border-radius: 99px;
+        text-transform: uppercase;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .eyebrow-meta {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-faint);
+        letter-spacing: 0.02em;
+      }
+      .doc-title {
+        font-size: 42px;
+        font-weight: 900;
+        letter-spacing: -1.2px;
+        line-height: 1.15;
+        margin: 0 0 10px;
+      }
+      .doc-title span {
+        color: var(--accent);
+      }
+      .doc-sub {
+        font-size: 15px;
+        color: var(--text-sub);
+        font-weight: 500;
+        max-width: 680px;
+        line-height: 1.6;
+        margin: 0;
+      }
+
+      .doc-meta-bar {
+        margin-top: 24px;
+        display: flex;
+        gap: 0;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.9);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--glass-shadow);
+      }
+      .doc-meta-item {
+        flex: 1;
+        padding: 14px 18px;
+        border-right: 1px solid var(--glass-border-subtle);
+      }
+      .doc-meta-item:last-child {
+        border-right: none;
+      }
+      .doc-meta-label {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+      }
+      .doc-meta-val {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-main);
+        font-family: var(--font-mono);
+      }
+
+      /* ===== Section Shell (Liquid Glass) ===== */
+      .section {
+        background: var(--glass-bg);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.9);
+        border-radius: 24px;
+        padding: 36px 40px 40px;
+        margin-bottom: 28px;
+        box-shadow: var(--glass-shadow);
+      }
+      .section-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .section-num {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid var(--accent-line);
+        border-radius: 8px;
+        padding: 3px 10px;
+        letter-spacing: 0.04em;
+      }
+      .section-title {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin: 0;
+      }
+      .section-desc {
+        font-size: 13px;
+        color: var(--text-sub);
+        margin: 6px 0 28px;
+        line-height: 1.6;
+        max-width: 780px;
+      }
+
+      /* ===== 01 System Context ===== */
+      .ctx-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+      .ctx-actor {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+      .ctx-icon-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--blue-bg);
+        color: var(--blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 8px 16px rgba(37, 99, 235, 0.12);
+      }
+      .ctx-actor-label {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--text-main);
+      }
+      .ctx-actor-sub {
+        font-size: 11.5px;
+        color: var(--text-sub);
+        font-weight: 500;
+      }
+      .ctx-arrow-v {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 8px 0;
+      }
+      .ctx-arrow-v .line {
+        width: 1.5px;
+        height: 24px;
+        background: rgba(148, 163, 184, 0.4);
+      }
+      .ctx-arrow-v .chevron {
+        color: var(--text-faint);
+        font-size: 12px;
+      }
+      .ctx-arrow-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-sub);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 3px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--glass-border);
+        margin: 2px 0;
+      }
+
+      .ctx-boundary {
+        width: 100%;
+        max-width: 660px;
+        border: 1.5px dashed var(--accent-line);
+        border-radius: 20px;
+        background: rgba(255, 107, 0, 0.03);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 24px;
+        text-align: center;
+        margin: 4px 0;
+      }
+      .ctx-boundary-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+      .ctx-boundary-sub {
+        font-size: 12px;
+        color: var(--text-sub);
+        margin-bottom: 16px;
+      }
+      .ctx-module-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .ctx-module-chip {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--text-main);
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid var(--glass-border);
+        padding: 6px 14px;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+      }
+
+      .ctx-fanout {
+        display: flex;
+        gap: 16px;
+        width: 100%;
+        max-width: 840px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .ext-node {
+        flex: 1;
+        min-width: 220px;
+        background: rgba(255, 255, 255, 0.55);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        box-shadow: var(--glass-shadow);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .ext-node:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--glass-shadow-hover);
+        background: var(--glass-bg-hover);
+      }
+      .ext-node-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      .ext-node-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin-bottom: 3px;
+      }
+      .ext-node-desc {
+        font-size: 11.5px;
+        color: var(--text-sub);
+        line-height: 1.45;
+      }
+
+      /* ===== 02 Layer Map ===== */
+      .layer-map {
+        display: grid;
+        grid-template-columns: 1fr 44px 1fr 44px 1fr;
+        gap: 0;
+        align-items: stretch;
+      }
+      .layer-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .layer-col-head {
+        margin-bottom: 4px;
+      }
+      .layer-col-eyebrow {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .layer-col-title {
+        font-size: 15px;
+        font-weight: 800;
+        margin-top: 2px;
+      }
+      .layer-col.sources .layer-col-eyebrow {
+        color: var(--blue);
+      }
+      .layer-col.core .layer-col-eyebrow {
+        color: var(--accent);
+      }
+      .layer-col.ui .layer-col-eyebrow {
+        color: var(--tier1);
+      }
+
+      .layer-card {
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, 0.55);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid rgba(255, 255, 255, 0.85);
+        box-shadow: var(--glass-shadow);
+        transition: transform 0.2s ease, box-shadow 0.2s ease,
+          background 0.2s ease;
+      }
+      .layer-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--glass-shadow-hover);
+        background: var(--glass-bg-hover);
+      }
+      .layer-col.sources .layer-card {
+        background: rgba(239, 246, 255, 0.45);
+      }
+      .layer-col.core .layer-card {
+        background: rgba(255, 241, 231, 0.45);
+      }
+      .layer-col.ui .layer-card {
+        background: rgba(240, 253, 244, 0.45);
+      }
+      .layer-card-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin-bottom: 3px;
+      }
+      .layer-card-path {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-faint);
+        margin-bottom: 6px;
+      }
+      .layer-card-desc {
+        font-size: 11.5px;
+        color: var(--text-sub);
+        line-height: 1.5;
+      }
+
+      .layer-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .layer-arrow .glyph {
+        font-size: 16px;
+        color: var(--text-faint);
+      }
+      .layer-arrow .tag {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--text-faint);
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        letter-spacing: 0.05em;
+      }
+
+      /* ===== 03 Resilience Pipelines ===== */
+      .pipe-group {
+        margin-bottom: 24px;
+      }
+      .pipe-group:last-child {
+        margin-bottom: 0;
+      }
+      .pipe-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .pipe-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--text-main);
+      }
+      .pipe-file {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        color: var(--text-sub);
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid var(--glass-border);
+        padding: 3px 10px;
+        border-radius: 6px;
+      }
+      .pipe-row {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        flex-wrap: wrap;
+      }
+      .tier-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 14px;
+        border: 1px solid;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        min-width: 200px;
+        flex: 1;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+      }
+      .tier-box.t1 {
+        background: var(--tier1-bg);
+        border-color: var(--tier1-bd);
+      }
+      .tier-box.t2 {
+        background: var(--tier2-bg);
+        border-color: var(--tier2-bd);
+      }
+      .tier-box.t3 {
+        background: var(--tier3-bg);
+        border-color: var(--tier3-bd);
+      }
+      .tier-badge {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        font-weight: 800;
+        color: #fff;
+        padding: 3px 7px;
+        border-radius: 6px;
+        flex-shrink: 0;
+      }
+      .tier-box.t1 .tier-badge {
+        background: var(--tier1);
+      }
+      .tier-box.t2 .tier-badge {
+        background: var(--tier2);
+      }
+      .tier-box.t3 .tier-badge {
+        background: var(--tier3);
+      }
+      .tier-box-text .tt {
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--text-main);
+      }
+      .tier-box-text .ts {
+        font-size: 11px;
+        color: var(--text-sub);
+        margin-top: 2px;
+      }
+      .pipe-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        color: var(--text-faint);
+        font-size: 14px;
+      }
+
+      /* ===== 04 Stack & Caching ===== */
+      .stack-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+      }
+      table.stack-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table.stack-table th {
+        text-align: left;
+        font-size: 10.5px;
+        font-weight: 700;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0 0 10px;
+        border-bottom: 1.5px solid rgba(148, 163, 184, 0.3);
+      }
+      table.stack-table td {
+        padding: 10px 0;
+        font-size: 12.5px;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        vertical-align: top;
+      }
+      table.stack-table td.k {
+        font-weight: 700;
+        color: var(--text-main);
+        width: 36%;
+      }
+      table.stack-table td.v {
+        color: var(--text-sub);
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+      }
+      .stack-note {
+        font-size: 11.5px;
+        color: var(--text-sub);
+        margin-top: 18px;
+        line-height: 1.6;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--glass-border);
+      }
+
+      /* ===== Footer ===== */
+      .doc-footer {
+        text-align: center;
+        padding-top: 24px;
+        font-size: 11px;
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      @media (max-width: 820px) {
+        .layer-map {
+          grid-template-columns: 1fr;
+        }
+        .layer-arrow {
+          flex-direction: row;
+          padding: 8px 0;
+        }
+        .layer-arrow .glyph {
+          transform: rotate(90deg);
+        }
+        .layer-arrow .tag {
+          writing-mode: horizontal-tb;
+        }
+        .stack-grid {
+          grid-template-columns: 1fr;
+        }
+        .doc-title {
+          font-size: 32px;
+        }
+        .section {
+          padding: 26px 20px 30px;
+          border-radius: 18px;
+        }
+      }
+      @media print {
+        /* 1. PDF 잔상을 유발하는 그림자, 필터, 변형 속성 완전 제거 */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          transform: none !important;
+          box-shadow: none !important; /* 레이어 잔상의 주원인인 그림자 제거 */
+          filter: none !important;
+        }
+
+        @page {
+          size: 210mm 1200mm;
+          margin: 10mm;
+        }
+
+        html,
+        body {
+          height: auto !important;
+          min-height: 100% !important;
+          overflow: visible !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background-color: #f2f5f9 !important;
+          background-image: radial-gradient(
+              circle at 10% 10%,
+              rgba(255, 107, 0, 0.15) 0%,
+              transparent 45%
+            ),
+            radial-gradient(
+              circle at 90% 15%,
+              rgba(37, 99, 235, 0.15) 0%,
+              transparent 50%
+            ),
+            radial-gradient(
+              circle at 50% 85%,
+              rgba(147, 51, 234, 0.1) 0%,
+              transparent 50%
+            ) !important;
+          background-attachment: fixed !important;
+        }
+
+        .doc {
+          width: 92% !important;
+          max-width: 1000px !important;
+          margin: 0 auto !important;
+          padding-top: 10px !important;
+        }
+
+        /* 2. 반투명(rgba) 대신 단색(#FFFFFF)을 사용하여 레이어 충돌 방지 */
+        .section {
+          break-inside: avoid !important;
+          margin-bottom: 24px !important;
+        }
+
+        .doc-meta-bar,
+        .ext-node,
+        .layer-card,
+        .tier-box,
+        .pipe-group {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+
+        .layer-map,
+        .ctx-fanout,
+        .stack-grid,
+        .pipe-row {
+          gap: 14px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc">
+      <!-- ===== Header ===== -->
+      <div class="doc-header">
+        <div class="eyebrow-row">
+          <span class="eyebrow-pill">Architecture Definition</span>
+          <span class="eyebrow-meta">개미반대로 · Ant-Contra</span>
+        </div>
+        <h1 class="doc-title">아키텍처 정의서<span>.</span></h1>
+        <p class="doc-sub">
+          역발상 매수 신호를 산출하는 실시간 대시보드의 시스템 경계, 계층 구조,
+          그리고 외부 데이터 장애에 대응하는 이중화(Fallback) 설계를 정의한다.
+        </p>
+        <div class="doc-meta-bar">
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Document</div>
+            <div class="doc-meta-val">SYS-ARCH-01</div>
+          </div>
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Stack</div>
+            <div class="doc-meta-val">Streamlit / Python</div>
+          </div>
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Scope</div>
+            <div class="doc-meta-val">core/ · ui/ · app.py</div>
+          </div>
+          <div class="doc-meta-item">
+            <div class="doc-meta-label">Version</div>
+            <div class="doc-meta-val">v1.0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 01 System Context ===== -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">01</span>
+          <h2 class="section-title">System Context Diagram</h2>
+        </div>
+        <p class="section-desc">
+          사용자(개미 투자자)가 시스템과 상호작용하는 범위와, 시스템이 의존하는
+          외부 데이터 소스 3종을 정의한다.
+        </p>
+
+        <div class="ctx-wrap">
+          <div class="ctx-actor">
+            <div class="ctx-icon-circle"><i class="fa-solid fa-user"></i></div>
+            <div class="ctx-actor-label">개미 투자자 (리테일)</div>
+            <div class="ctx-actor-sub">감정적 매매에 취약한 최종 사용자</div>
+          </div>
+          <div class="ctx-arrow-v">
+            <div class="line"></div>
+            <span class="ctx-arrow-label"
+              >종목 검색 · 조회 ↕ 분석 결과 반환</span
+            >
+            <div class="line"></div>
+            <i class="fa-solid fa-chevron-down chevron"></i>
+          </div>
+
+          <div class="ctx-boundary">
+            <div class="ctx-boundary-title">
+              개미반대로 (Ant-Contra) — System Boundary
+            </div>
+            <div class="ctx-boundary-sub">
+              커뮤니티 여론 + 13개 객관지표를 결합해 비명 지수(Scream Index)
+              산출
+            </div>
+            <div class="ctx-module-row">
+              <span class="ctx-module-chip">core/ 계산 레이어</span>
+              <span class="ctx-module-chip">ui/ 렌더링</span>
+              <span class="ctx-module-chip">JSON 점수 이력</span>
+            </div>
+          </div>
+
+          <div class="ctx-arrow-v">
+            <div class="line"></div>
+            <span class="ctx-arrow-label">외부 데이터 fetch</span>
+            <div class="line"></div>
+            <i class="fa-solid fa-chevron-down chevron"></i>
+          </div>
+
+          <div class="ctx-fanout">
+            <div class="ext-node">
+              <div
+                class="ext-node-icon"
+                style="background: var(--blue-bg); color: var(--blue)"
+              >
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+              <div>
+                <div class="ext-node-title">시세·지수 데이터</div>
+                <div class="ext-node-desc">
+                  FinanceDataReader / yfinance<br />가격·거래량·KOSPI·KOSDAQ·환율
+                </div>
+              </div>
+            </div>
+            <div class="ext-node">
+              <div
+                class="ext-node-icon"
+                style="background: var(--accent-soft); color: var(--accent)"
+              >
+                <i class="fa-solid fa-comments"></i>
+              </div>
+              <div>
+                <div class="ext-node-title">네이버 금융</div>
+                <div class="ext-node-desc">
+                  펀더멘털·외국인수급·뉴스·<br />종목토론방 (비공식 스크래핑)
+                </div>
+              </div>
+            </div>
+            <div class="ext-node">
+              <div
+                class="ext-node-icon"
+                style="background: var(--tier1-bg); color: var(--tier1)"
+              >
+                <i class="fa-solid fa-building-columns"></i>
+              </div>
+              <div>
+                <div class="ext-node-title">KRX (KIND)</div>
+                <div class="ext-node-desc">
+                  전체 상장종목 목록<br />(코스피+코스닥+코넥스)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 02 Application Layer Map ===== -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">02</span>
+          <h2 class="section-title">Application Layer Map</h2>
+        </div>
+        <p class="section-desc">
+          외부 소스 → 계산 레이어(core) → 렌더링 레이어(ui) 순으로 데이터가
+          가공되는 3계층 구조.
+        </p>
+
+        <div class="layer-map">
+          <div class="layer-col sources">
+            <div class="layer-col-head">
+              <div class="layer-col-eyebrow">Sources</div>
+              <div class="layer-col-title">외부 데이터</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">가격 / 지수</div>
+              <div class="layer-card-path">price_data.py · market_index.py</div>
+              <div class="layer-card-desc">
+                FDR 우선, 실패 시 yfinance 폴백. TTL 10분
+              </div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">수급 / 뉴스 / 토론방</div>
+              <div class="layer-card-path">
+                naver_scraper.py · fundamentals.py
+              </div>
+              <div class="layer-card-desc">
+                requests + BeautifulSoup. TTL 5~10분
+              </div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">상장 종목 목록</div>
+              <div class="layer-card-path">krx_listing.py</div>
+              <div class="layer-card-desc">전체 KRX 종목. TTL 12시간</div>
+            </div>
+          </div>
+
+          <div class="layer-arrow">
+            <span class="glyph"><i class="fa-solid fa-arrow-right"></i></span>
+            <span class="tag">RAW → SIGNAL</span>
+          </div>
+
+          <div class="layer-col core">
+            <div class="layer-col-head">
+              <div class="layer-col-eyebrow">Core</div>
+              <div class="layer-col-title">계산 레이어</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">13개 객관 지표</div>
+              <div class="layer-card-path">
+                indicators.py · candle_patterns.py
+              </div>
+              <div class="layer-card-desc">RSI·볼린저·OBV·일목균형표 등</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">커뮤니티 감성분석</div>
+              <div class="layer-card-path">sentiment.py</div>
+              <div class="layer-card-desc">
+                공포/탐욕 사전 + ATR 변동성 가중치
+              </div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">최종 스코어링</div>
+              <div class="layer-card-path">scoring.py · risk_levels.py</div>
+              <div class="layer-card-desc">비명지수·FOMO·손익비 타점 산출</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">스캐너 / 백테스트</div>
+              <div class="layer-card-path">scanner.py · backtest.py</div>
+              <div class="layer-card-desc">유니버스 스캔 + 3년 과거 검증</div>
+            </div>
+          </div>
+
+          <div class="layer-arrow">
+            <span class="glyph"><i class="fa-solid fa-arrow-right"></i></span>
+            <span class="tag">SCORE → VIEW</span>
+          </div>
+
+          <div class="layer-col ui">
+            <div class="layer-col-head">
+              <div class="layer-col-eyebrow">UI</div>
+              <div class="layer-col-title">렌더링 레이어</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">홈 화면</div>
+              <div class="layer-card-path">
+                index_ticker.py · scanner_panel.py
+              </div>
+              <div class="layer-card-desc">시장 티커 + 과매도 스캐너</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">상세 대시보드</div>
+              <div class="layer-card-path">
+                main_panel.py · chart.py · gauge.py
+              </div>
+              <div class="layer-card-desc">비명지수 게이지 + 캔들차트</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">사이드바 카드</div>
+              <div class="layer-card-path">sidebar_cards.py</div>
+              <div class="layer-card-desc">매매전략·손익비·신호요약</div>
+            </div>
+            <div class="layer-card">
+              <div class="layer-card-title">검증 리포트</div>
+              <div class="layer-card-path">backtest_panel.py</div>
+              <div class="layer-card-desc">점수구간별 승률/수익률</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 03 Resilience Pipelines ===== -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title">
+            데이터 소스 이중화 전략 (Resilience Map)
+          </h2>
+        </div>
+        <p class="section-desc">
+          외부 소스 장애 시 서비스가 조용히 하위 등급으로 대체되며 화면이 깨지지
+          않도록 설계된 폴백 체인. 색상은 신뢰도 등급을 의미한다.
+        </p>
+
+        <div class="pipe-group">
+          <div class="pipe-head">
+            <span class="pipe-title">상장 종목 목록</span>
+            <span class="pipe-file">krx_listing.py · load_krx_listing()</span>
+          </div>
+          <div class="pipe-row">
+            <div class="tier-box t1">
+              <span class="tier-badge">1차</span>
+              <div class="tier-box-text">
+                <div class="tt">FinanceDataReader</div>
+                <div class="ts">StockListing('KRX')</div>
+              </div>
+            </div>
+            <div class="pipe-arrow">
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <div class="tier-box t2">
+              <span class="tier-badge">2차</span>
+              <div class="tier-box-text">
+                <div class="tt">KRX(KIND) 공식 다운로드</div>
+                <div class="ts">corpList.do 직접 파싱</div>
+              </div>
+            </div>
+            <div class="pipe-arrow">
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <div class="tier-box t3">
+              <span class="tier-badge">3차</span>
+              <div class="tier-box-text">
+                <div class="tt">하드코딩 백업</div>
+                <div class="ts">대형주 20종목 고정 리스트</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-group">
+          <div class="pipe-head">
+            <span class="pipe-title">개별 종목 가격</span>
+            <span class="pipe-file">price_data.py · load_price_data()</span>
+          </div>
+          <div class="pipe-row">
+            <div class="tier-box t1">
+              <span class="tier-badge">1차</span>
+              <div class="tier-box-text">
+                <div class="tt">FinanceDataReader</div>
+                <div class="ts">국내 거래소 원천, 배당/분할 이슈 없음</div>
+              </div>
+            </div>
+            <div class="pipe-arrow">
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <div class="tier-box t2">
+              <span class="tier-badge">2차</span>
+              <div class="tier-box-text">
+                <div class="tt">yfinance</div>
+                <div class="ts">.KS → .KQ 순차 시도</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-group">
+          <div class="pipe-head">
+            <span class="pipe-title">시장 지수 (RS 계산용)</span>
+            <span class="pipe-file"
+              >market_index.py · get_market_index_series()</span
+            >
+          </div>
+          <div class="pipe-row">
+            <div class="tier-box t1">
+              <span class="tier-badge">1차</span>
+              <div class="tier-box-text">
+                <div class="tt">FDR (KS11 / KQ11)</div>
+                <div class="ts">개별 종목과 동일 소스로 정렬 불일치 방지</div>
+              </div>
+            </div>
+            <div class="pipe-arrow">
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <div class="tier-box t2">
+              <span class="tier-badge">2차</span>
+              <div class="tier-box-text">
+                <div class="tt">yfinance (^KS11 / ^KQ11)</div>
+                <div class="ts">지수 카드 공백 방지용</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-group">
+          <div class="pipe-head">
+            <span class="pipe-title">커뮤니티 · 뉴스 스크래핑</span>
+            <span class="pipe-file">naver_scraper.py</span>
+          </div>
+          <div class="pipe-row">
+            <div class="tier-box t1">
+              <span class="tier-badge">1차</span>
+              <div class="tier-box-text">
+                <div class="tt">실시간 스크래핑</div>
+                <div class="ts">게시글 밀도 기반 페이지 수 동적 조절</div>
+              </div>
+            </div>
+            <div class="pipe-arrow">
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <div class="tier-box t2">
+              <span class="tier-badge">Fail-safe</span>
+              <div class="tier-box-text">
+                <div class="tt">빈 리스트 / 백업 게시글</div>
+                <div class="ts">마크업 변경 시 조용히 폴백, 크래시 방지</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 04 Stack & Caching ===== -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-num">04</span>
+          <h2 class="section-title">기술 스택 & 캐싱 정책</h2>
+        </div>
+        <p class="section-desc">
+          st.cache_data TTL은 데이터 변동 주기에 맞춰 계층별로 차등 적용된다.
+        </p>
+
+        <div class="stack-grid">
+          <table class="stack-table">
+            <thead>
+              <tr>
+                <th>영역</th>
+                <th>기술</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="k">프레임워크</td>
+                <td class="v">Streamlit 1.40.1</td>
+              </tr>
+              <tr>
+                <td class="k">데이터</td>
+                <td class="v">FinanceDataReader, yfinance, pandas, numpy</td>
+              </tr>
+              <tr>
+                <td class="k">스크래핑</td>
+                <td class="v">requests, BeautifulSoup4, lxml</td>
+              </tr>
+              <tr>
+                <td class="k">시각화</td>
+                <td class="v">Plotly, 커스텀 SVG(JS)</td>
+              </tr>
+              <tr>
+                <td class="k">영속화</td>
+                <td class="v">JSON 파일 (data/score_history.json)</td>
+              </tr>
+            </tbody>
+          </table>
+          <table class="stack-table">
+            <thead>
+              <tr>
+                <th>캐시 대상</th>
+                <th>TTL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="k">개별 종목 가격</td>
+                <td class="v">10 min</td>
+              </tr>
+              <tr>
+                <td class="k">펀더멘털 / 뉴스공백</td>
+                <td class="v">10 min</td>
+              </tr>
+              <tr>
+                <td class="k">종목토론방 · 지수</td>
+                <td class="v">5 ~ 10 min</td>
+              </tr>
+              <tr>
+                <td class="k">스캐너 결과</td>
+                <td class="v">60 min</td>
+              </tr>
+              <tr>
+                <td class="k">KRX 상장목록</td>
+                <td class="v">12 h</td>
+              </tr>
+              <tr>
+                <td class="k">백테스트 결과</td>
+                <td class="v">6 h</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="stack-note">
+          ※ score_history.json은 ephemeral 배포 환경(Streamlit Cloud 등)에서
+          재배포 시 유실 가능 — SQLite/외부 DB 전환이 다음 개선 과제로 식별됨.
+        </div>
+      </div>
+
+      <div class="doc-footer">
+        개미반대로(Ant-Contra) · Architecture Definition Document · Generated
+        from src/ codebase
+      </div>
+    </div>
+  </body>
+</html>

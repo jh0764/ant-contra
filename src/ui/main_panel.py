@@ -1,6 +1,7 @@
 import streamlit as st
 from constants import PRICE_COLOR, THEME, SPACING
 from ui.common import html_block
+import re
 
 
 def render_price_info(
@@ -81,19 +82,43 @@ def render_price_info(
 
 
 def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
-    # 네이버 종목토론방 바로가기 URL 생성
-    naver_board_url = (
-        f"https://finance.naver.com/item/board.naver?code={ticker_code}"
-        if ticker_code
-        else "#"
-    )
+    clean_code = None
 
-    # 이미지와 동일한 링크(Link) 모양의 SVG 아이콘 배치
+    # 1. 전달받은 ticker_code에서 숫자 6자리 추출 (예: '034020')
+    if ticker_code:
+        digits = re.findall(r"\d{1,6}", str(ticker_code))
+        if digits:
+            clean_code = digits[0].zfill(6)
+
+    # 2. ticker_code 추출 실패 시 naver_posts 데이터 내부에서 탐색
+    if not clean_code and naver_posts and isinstance(naver_posts, list):
+        for post in naver_posts:
+            if isinstance(post, dict):
+                for key in ["code", "ticker", "symbol", "stock_code"]:
+                    val = post.get(key)
+                    if val:
+                        digits = re.findall(r"\d{1,6}", str(val))
+                        if digits:
+                            clean_code = digits[0].zfill(6)
+                            break
+            if clean_code:
+                break
+
+    # 3. 네이버 종목토론방 URL 생성
+    if clean_code:
+        naver_board_url = (
+            f"https://finance.naver.com/item/board.naver?code={clean_code}"
+        )
+    else:
+        naver_board_url = "https://finance.naver.com/"
+    # 상단 여백(margin-top:24px) 및 외부 링크 설정 (target="_blank")
     st.markdown(
         f"""
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; ">
-        <span style="font-size:14px; font-weight:800; color:{THEME['text_main']};">실시간 주주 비명소리</span>
-        <a href="{naver_board_url}" target="_blank" title="네이버 종목토론방 바로가기" style="text-decoration:none; display:inline-flex; align-items:center;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; margin-bottom:6px;">
+        <a href="{naver_board_url}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; color:inherit;">
+            <span style="font-size:14px; font-weight:800; color:{THEME['text_main']};">실시간 주주 비명소리</span>
+        </a>
+        <a href="{naver_board_url}" target="_blank" rel="noopener noreferrer" title="네이버 종목토론방 바로가기" style="text-decoration:none; display:inline-flex; align-items:center;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
                  style="transition:stroke 0.2s; cursor:pointer;"
                  onmouseover="this.style.stroke='#111827'"
@@ -116,7 +141,7 @@ def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
         st.caption("수집된 게시글이 없습니다.")
         return
 
-    # 상위 4개만 한 줄 형태 컴팩트 카드로 렌더링
+    # 게시글 별 링크 설정
     for post in naver_posts[:4]:
         likes = post.get("likes", 0)
         views = post.get("views", 0)
@@ -129,9 +154,11 @@ def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
             if ratio >= 0.3
             else THEME["text_sub"]
         )
+        post_url = post.get("url") or naver_board_url
 
         st.markdown(
-            f"""<div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:6px; padding:7px 10px; box-shadow:0 4px 14px rgba(31,38,135,0.05);
+            f"""<a href="{post_url}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; color:inherit; display:block;">
+            <div style="background:{THEME['surface']}; border:1px solid {THEME['border']}; border-radius:6px; padding:7px 10px; box-shadow:0 4px 14px rgba(31,38,135,0.05);
                 margin-bottom:6px; border-left:3px solid {badge_color}; display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:11.5px; color:{THEME['text_main']}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;">
                 {post['title']}
@@ -139,25 +166,26 @@ def render_community_tab(naver_posts, ai_reason=None, ticker_code=None):
             <div style="font-size:10px; color:{THEME['text_sub']}; white-space:nowrap;">
                 👍 {likes} &nbsp;·&nbsp; 👀 {views}
             </div>
-            </div>""",
+            </div></a>""",
             unsafe_allow_html=True,
         )
 
     # 게시글 더보기
     if len(naver_posts) > 4:
         more_count = len(naver_posts) - 4
-        # 이모티콘 제거
         more_label = f"게시글 더보기 ({min(more_count,4)})"
 
         with st.expander(more_label, expanded=False):
             for post in naver_posts[4:8]:
                 likes = post.get("likes", 0)
                 views = post.get("views", 0)
+                post_url = post.get("url") or naver_board_url
                 st.markdown(
-                    f"""<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid {THEME['border']};">
+                    f"""<a href="{post_url}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; color:inherit; display:block;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid {THEME['border']};">
                     <span style="font-size:11.5px; color:{THEME['text_main']}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;">{post['title']}</span>
                     <span style="font-size:10px; color:{THEME['text_sub']};">👍 {likes} · 👀 {views}</span>
-                    </div>""",
+                    </div></a>""",
                     unsafe_allow_html=True,
                 )
 

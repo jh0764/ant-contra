@@ -588,7 +588,7 @@ try:
 
         news_headlines = get_recent_news_headlines(ticker_input)
         render_news_headlines(news_headlines)
-        render_community_tab(naver_posts, ai_reason)
+        render_community_tab(naver_posts, ai_reason, ticker_code=ticker_input)
 
 except Exception as e:
     st.error(f"⚠️ 대시보드 로드 중 치명적인 문제가 발생했습니다. (에러: {e})")

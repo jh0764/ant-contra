@@ -9,6 +9,8 @@ from pathlib import Path
 # 🚨 1. Page Configuration (최상단 필수!)
 st.set_page_config(layout="wide", page_title="개미반대로 (Ant-Contra)")
 
+from datetime import datetime, timezone, timedelta
+
 from ui.common import render_tab_group
 from core.krx_listing import load_krx_listing, search_companies
 from core.price_data import load_price_data
@@ -231,6 +233,38 @@ div[data-testid="stRadio"] label[data-baseweb="radio"]:not(:has(input:checked)) 
 div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p {{
     color: #1a1a1a !important;
 }}
+/* app.py 내 <style> 태그 내부에 추가 */
+[data-tooltip] {{
+    position: relative;
+    cursor: help;
+}}
+
+[data-tooltip]::after {{
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1E293B;
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    pointer-events: none;
+}}
+
+[data-tooltip]:hover::after {{
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-2px);
+}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -267,7 +301,7 @@ with st.container(key="app_header_top"):
     st.markdown(
         """
         <style>
-        /* 컨테이너의 하단 간격은 적절하게 유지 (검색창과 붙는 현상 방지) */
+        /* 컨테이너의 하단 간격 유지 */
         div.st-key-app_header_top [data-testid='stElementContainer'] {
             margin-bottom: 0px !important;
             padding-bottom: 0px !important;
@@ -277,28 +311,76 @@ with st.container(key="app_header_top"):
         unsafe_allow_html=True,
     )
 
+    # KST 한국 시간 기준 장 상태 상세 세분화 계산
+    kst = timezone(timedelta(hours=9))
+    now = datetime.now(kst)
+    current_time_str = now.strftime("%H:%M")
+
+    # 시간 분 계산 (HHMM 형태 숫자 변환)
+    time_num = now.hour * 100 + now.minute
+    is_weekend = now.weekday() >= 5  # 토(5), 일(6)
+
+    if is_weekend:
+        status_text = "장 마감"
+        status_bg = "#F1F3F5"
+        status_color = "#868E96"
+        dot_color = "#EF4444"
+    else:
+        if 800 <= time_num < 900:
+            status_text = "장전 시간외"
+            status_bg = "#FEF3C7"
+            status_color = "#D97706"
+            dot_color = "#F59E0B"
+        elif 900 <= time_num < 1530:
+            status_text = "개장 중"
+            status_bg = "#E6FCF5"
+            status_color = "#0CA678"
+            dot_color = "#10B981"
+        elif 1530 <= time_num < 1800:
+            status_text = "장후 시간외"
+            status_bg = "#FFEDD5"
+            status_color = "#C2410C"
+            dot_color = "#F97316"
+        else:
+            status_text = "장 마감"
+            status_bg = "#F1F3F5"
+            status_color = "#868E96"
+            dot_color = "#EF4444"
+
     if logo_src:
         st.markdown(
             f"""
             <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0px; margin-bottom: 12px;">
-                <!-- 로고 크기 170px 유지 -->
                 <a href="?home=1" target="_self" style="text-decoration: none; display: block;">
                     <img src="{logo_src}" style="width: 170px; height: auto; display: block;" alt="개미반대로 로고">
                 </a>
-                <!-- 이미지 자체의 불필요한 투명 하단 여백만 살짝 줄여 밀착 (-10px) -->
-                <span style="
-                    font-size: 12px; 
-                    font-weight: 600; 
-                    color: {THEME['text_main']}; 
-                    background: rgba(0, 0, 0, 0.05); 
-                    padding: 2px 8px; 
-                    border-radius: 5px; 
-                    letter-spacing: -0.3px;
-                    display: inline-block;
-                    margin-top: -40px;
-                ">
-                    군중의 공포와 역발상 투자 기회 분석
-                </span>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: -40px; flex-wrap: wrap;">
+                    <span style="
+                        font-size: 12px; 
+                        font-weight: 600; 
+                        color: {THEME['text_main']}; 
+                        background: rgba(0, 0, 0, 0.05); 
+                        padding: 3px 8px; 
+                        border-radius: 5px; 
+                        letter-spacing: -0.3px;
+                    ">
+                        군중의 공포와 역발상 투자 기회 분석
+                    </span>
+                    <span style="
+                        display: inline-flex; 
+                        align-items: center; 
+                        gap: 5px; 
+                        background-color: {status_bg}; 
+                        color: {status_color}; 
+                        padding: 3px 8px; 
+                        border-radius: 5px; 
+                        font-size: 11.5px; 
+                        font-weight: 700;
+                    ">
+                        <span style="width: 6px; height: 6px; background-color: {dot_color}; border-radius: 50%; display: inline-block;"></span>
+                        {status_text} | {current_time_str} 갱신
+                    </span>
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -346,9 +428,11 @@ elif "stock" in st.query_params:
     st.session_state["last_selected"] = selected_item
     st.session_state["dashboard_ready"] = True
 else:
-    render_index_ticker()
     with st.spinner("공포 스캐너 실행 중..."):
         scan_results = run_fear_scanner(top_n=10)
+
+    # scan_results를 인자로 전달하여 실제 평균 점수를 연산하도록 수정
+    render_index_ticker(results=scan_results)
     render_fear_scanner(scan_results, KRX_LISTING)
     render_landing()
     st.stop()

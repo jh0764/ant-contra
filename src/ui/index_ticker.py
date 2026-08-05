@@ -1,7 +1,9 @@
 import streamlit as st
+import math
 from constants import PRICE_COLOR, THEME
 from core.market_index import get_market_index_series, get_usdkrw_data
 from ui.common import html_block
+
 
 def _build_sparkline_svg(series, color, width=100, height=32):
     if series is None or len(series) < 2:
@@ -17,15 +19,38 @@ def _build_sparkline_svg(series, color, width=100, height=32):
     return f'<polyline points="{" ".join(points)}" fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
 
 
+def _build_gauge_svg(score, color, width=76, height=34):
+    """공포지수 점수를 미니 반원 아치 SVG로 생성"""
+    score_clamped = min(max(score, 0), 100)
+    angle = (score_clamped / 100.0) * math.pi
+    end_x = 50 - 36 * math.cos(angle)
+    end_y = 44 - 36 * math.sin(angle)
+
+    gauge_path = (
+        f'<path d="M 14 44 A 36 36 0 0 1 {end_x:.2f} {end_y:.2f}" fill="none" stroke="{color}" stroke-width="7" stroke-linecap="round"/>'
+        if score_clamped > 0
+        else ""
+    )
+
+    return f"""
+    <svg width="{width}" height="{height}" viewBox="0 0 100 50" style="display:block; overflow:visible;">
+        <!-- 배경 트랙 -->
+        <path d="M 14 44 A 36 36 0 0 1 86 44" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="7" stroke-linecap="round"/>
+        <!-- 게이지 채우기 -->
+        {gauge_path}
+    </svg>
+    """
+
+
 def render_index_ticker(results=None, usdkrw_data=None):
     # 1. 데이터 로드
     kospi_series, _ = get_market_index_series(False)
     kosdaq_series, _ = get_market_index_series(True)
-    
-    # 2. 원/달러 환율 데이터 로드 (내부에서 직접 호출)
+
+    # 2. 원/달러 환율 데이터 로드
     usdkrw_data = get_usdkrw_data()
 
-    # 2. 종합 공포지수 로직
+    # 3. 종합 공포지수 로직 연산
     fear_score = 50.0
     if results:
         all_scores = [
@@ -50,7 +75,7 @@ def render_index_ticker(results=None, usdkrw_data=None):
     # 반응형 그리드 CSS
     css = f"""
     <style>
-    /* 기본 데스크톱: 무조건 4열(1x4) 유지 */
+    /* 기본 데스크톱: 4열(1x4) 유지 */
     .ticker-grid {{
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -59,14 +84,14 @@ def render_index_ticker(results=None, usdkrw_data=None):
         width: 100%;
     }}
 
-    /* 태블릿 / 중형 화면 (900px 이하): 2열(2x2)로 깔끔하게 배치 */
+    /* 태블릿 / 중형 화면 (900px 이하): 2열(2x2) */
     @media (max-width: 900px) {{
         .ticker-grid {{
             grid-template-columns: repeat(2, 1fr);
         }}
     }}
 
-    /* 모바일 화면 (550px 이하): 1열로 나열 */
+    /* 모바일 화면 (550px 이하): 1열 */
     @media (max-width: 550px) {{
         .ticker-grid {{
             grid-template-columns: 1fr;
@@ -95,12 +120,12 @@ def render_index_ticker(results=None, usdkrw_data=None):
     }}
     
     .ticker-card::before {{
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%);
-    pointer-events: none;
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 50%;
+        background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%);
+        pointer-events: none;
     }}
 
     .ticker-card:hover {{
@@ -152,6 +177,9 @@ def render_index_ticker(results=None, usdkrw_data=None):
 
     .ticker-svg-box {{
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }}
     </style>
     """
@@ -189,6 +217,8 @@ def render_index_ticker(results=None, usdkrw_data=None):
     kospi_html = _make_index_card_html("코스피", kospi_series)
     kosdaq_html = _make_index_card_html("코스닥", kosdaq_series)
 
+    # 미니 반원형 게이지 적용된 공포지수 카드
+    gauge_svg = _build_gauge_svg(fear_score, fear_color)
     fear_html = f"""
     <div class="ticker-card">
         <div class="ticker-info">
@@ -196,19 +226,20 @@ def render_index_ticker(results=None, usdkrw_data=None):
             <span class="ticker-value" style="color:{fear_color};">{fear_score:.1f} <span style="font-size:11px;">점</span></span>
             <div><span class="fear-badge" style="color:{fear_color}; background:{fear_bg};">{fear_label}</span></div>
         </div>
+        <div class="ticker-svg-box">
+            {gauge_svg}
+        </div>
     </div>
     """
 
-# 4) 원/달러 환율 HTML (차트 및 데이터 연동 강화)
+    # 원/달러 환율 카드
     if usdkrw_data and usdkrw_data.get("series") is not None:
         rate = usdkrw_data.get("current", 0.0)
         chg = usdkrw_data.get("change_pct", 0.0)
         r_color = PRICE_COLOR["up"] if chg >= 0 else PRICE_COLOR["down"]
         r_arrow = "▲" if chg >= 0 else "▼"
-        
-        # 코스피/코스닥과 동일하게 Sparkline SVG 차트 생성
         r_spark = _build_sparkline_svg(usdkrw_data.get("series"), r_color)
-        
+
         fx_html = f"""
         <div class="ticker-card">
             <div class="ticker-info">
@@ -222,7 +253,6 @@ def render_index_ticker(results=None, usdkrw_data=None):
         </div>
         """
     else:
-        # 환율 데이터가 없을 때의 기본/실패 처리
         fx_html = f"""
         <div class="ticker-card">
             <div class="ticker-info">

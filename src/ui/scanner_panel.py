@@ -224,10 +224,10 @@ def render_fear_scanner(results, krx_listing, supply_data=None):
     )
 
     kp_ssang_html = (
-        '<span class="ssang-badge">유의미한 쌍끌이</span>' if kp_eval["is_ssang"] else ""
+        '<span class="ssang-badge">쌍끌이</span>' if kp_eval["is_ssang"] else ""
     )
     kd_ssang_html = (
-        '<span class="ssang-badge">유의미한 쌍끌이</span>' if kd_eval["is_ssang"] else ""
+        '<span class="ssang-badge">쌍끌이</span>' if kd_eval["is_ssang"] else ""
     )
 
     def _get_val_class(val):

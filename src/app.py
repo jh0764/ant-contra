@@ -56,6 +56,31 @@ from ui.index_ticker import render_index_ticker
 from constants import THEME, ACCENT
 from vendor.streamlit_searchbox import st_searchbox
 
+hide_streamlit_style = """
+    <style>
+    /* 1. 상단 헤더 및 불필요한 Streamlit UI 완전 제거 */
+    #MainMenu {visibility: hidden;}
+    .stAppDeployButton {display: none !important;}
+    header {display: none !important;}
+    div[data-testid="stHeader"] {display: none !important;}
+    footer {visibility: hidden;}
+
+    /* 2. 메인 화면 전체 패딩 강제 제거 (우선순위 최고 적용) */
+    div.stMainBlockContainer,
+    .main .block-container,
+    div[data-testid="stMainBlockContainer"] {
+        padding-top: 0rem !important;
+        margin-top: -3rem !important;
+    }
+
+    /* 3. 첫 번째 요소의 기본 Top Margin 제거 */
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: 0rem !important;
+    }
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # 상단 헤더, 배포 버튼, 메뉴 숨기기
 hide_streamlit_style = """
     <style>

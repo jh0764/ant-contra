@@ -7,6 +7,7 @@
 > 프로젝트의 시스템 구조, 데이터 파이프라인, 백테스트 검증 결과를 한눈에 확인할 수 있는 공식 문서 포털입니다.
 > 🔗 **실시간 문서 포털 바로가기:** [통합포털](https://jh0764.github.io/ant-contra/)  
 > _(또는 GitHub 내 소스 문서 바로가기: [`docs/index.html`](./docs/index.html))_
+> 배포 : https://ant-contra-w6rqq96xjqwv47ppnzfmuc.streamlit.app/
 
 ---
 
